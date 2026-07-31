@@ -4,19 +4,6 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- CREATE TYPE contact_type AS ENUM ('EMAIL', 'PHONE');
 -- CREATE TYPE club_role AS ENUM ('ADMIN')
 
-CREATE TABLE users (
-  id UUID PRIMARY KEY
-    DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  usn VARCHAR(15) NOT NULL UNIQUE,
-  pfp TEXT,
-  created_at TIMESTAMPTZ NOT NULL
-    DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMPTZ NOT NULL
-    DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE teams (
   id UUID PRIMARY KEY
     DEFAULT gen_random_uuid(),

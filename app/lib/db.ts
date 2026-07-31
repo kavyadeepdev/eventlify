@@ -1,7 +1,9 @@
-import { Pool } from "pg";
+import postgres from "postgres";
 
 const dbUri = process.env.DATABASE_URI;
 
-const client = new Pool({ connectionString: dbUri as string });
+const sql = postgres(dbUri as string, {
+  transform: postgres.camel,
+});
 
-export default client;
+export default sql;
