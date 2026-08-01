@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 
-import { authClient } from "@/app/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 
 export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
   const handleGoogleSignUp = async () => {
