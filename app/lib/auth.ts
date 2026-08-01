@@ -30,6 +30,10 @@ export const auth = betterAuth({
         type: "string",
         required: false,
       },
+      slug: {
+        type: "string",
+        required: true,
+      },
     },
   },
   session: {
