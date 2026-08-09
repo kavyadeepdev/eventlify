@@ -1,3 +1,45 @@
+# Project Instructions
+
+## Stack
+
+- Next.js (16, App Router)
+- TypeScript
+- PostgreSQL
+- postgres.js
+- Better Auth
+- Tailwind CSS (v4)
+- shadcn/ui & Base UI
+
+## Project Structure
+
+- `app/` — routes, pages, and REST API endpoints
+- `components/` — reusable UI components
+- `lib/` — database client, auth configuration, and shared utilities
+- `migrations/` — SQL database migration scripts
+- `better-auth_migrations/` — Better Auth database migrations
+- `docs/` — project documentation suite (`database.md`, `architecture.md`, `decisions.md`, `ERD.svg`)
+- `scripts/` — database seeding and utility scripts
+
+## Rules
+
+- Use TypeScript; don't introduce JavaScript.
+- Prefer Server Components by default.
+- Use Client Components only when interactivity requires them.
+- Validate external/user input with Zod.
+- Never access the database directly from UI components.
+- Keep database queries in the appropriate server-side layer.
+- Don't duplicate existing utilities (e.g. use `cn` from `lib/utils.ts`).
+- Follow existing naming conventions (`snake_case` in database, `camelCase` in TypeScript).
+- Don't introduce new dependencies without justification.
+
+## Database
+
+- PostgreSQL is the source of truth.
+- `postgres.js` is the primary database driver (with automatic `camelCase` key transformation).
+- IDs remain primary keys (UUID).
+- Slugs are used for public URLs.
+- Never modify migrations that have already been applied.
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
