@@ -195,7 +195,7 @@ export default function Home() {
                 Are you a Club Lead or Event Organizer?
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Publish your upcoming workshops, manage member teams, track participant check-ins, and streamline student registrations on Campus Pulse.
+                Publish your upcoming workshops, manage member teams, track participant check-ins, and streamline student registrations on Eventlify.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">

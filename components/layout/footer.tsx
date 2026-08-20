@@ -10,9 +10,9 @@ export default function Footer() {
         <div className="space-y-4 md:col-span-1">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs">
-              CP
+              EL
             </div>
-            <span className="text-base font-bold text-foreground">Campus Pulse</span>
+            <span className="text-base font-bold text-foreground">Eventlify</span>
           </div>
           <p className="text-xs leading-relaxed">
             The platform for campus club discovery, events, workshops, and competitive hackathons.
@@ -70,7 +70,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
         <Separator />
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs gap-4">
-          <p>© 2026 Campus Pulse. All rights reserved.</p>
+          <p>© 2026 Eventlify. All rights reserved.</p>
           <p className="flex items-center gap-1">
             Built with <Heart className="w-3.5 h-3.5 text-destructive fill-destructive inline" /> for campus teams
           </p>
