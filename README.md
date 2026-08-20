@@ -1,4 +1,4 @@
-# Event App
+# Eventlify
 
 A modern web application built for managing campus events, student clubs, participant registrations, and attendance tracking.
 
@@ -6,7 +6,7 @@ A modern web application built for managing campus events, student clubs, partic
 
 ## Overview
 
-Event App is a central platform that enables campus clubs to publish events, manage club memberships, and coordinate student registrations. It supports both individual and team-based event registrations, enforces event constraints (such as team size and registration deadlines), and tracks participant check-ins and attendance.
+Eventlify is a central platform that enables campus clubs to publish events, manage club memberships, and coordinate student registrations. It supports both individual and team-based event registrations, enforces event constraints (such as team size and registration deadlines), and tracks participant check-ins and attendance.
 
 ---
 
