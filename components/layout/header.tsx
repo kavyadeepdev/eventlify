@@ -83,20 +83,12 @@ const Header = () => {
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <Link href="/login">
-                <Button variant="ghost" size="sm" className="gap-1.5">
-                  <LogIn className="w-4 h-4" />
-                  Log In
-                </Button>
-              </Link>
-              <Link href="/signup">
-                <Button variant="default" size="sm" className="gap-1.5">
-                  <UserPlus className="w-4 h-4" />
-                  Sign Up
-                </Button>
-              </Link>
-            </div>
+            <Link href="/login">
+              <Button variant="default" size="sm" className="gap-1.5">
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </Button>
+            </Link>
           )}
         </div>
       </div>
