@@ -8,6 +8,8 @@ import { getSessionUser } from "@/lib/session";
 import { EventApiData, TeamApiData } from "@/lib/types";
 import type { ActionState } from "@/lib/action-state";
 
+import { updateUserProfile } from "@/lib/db-queries";
+
 const failure = (error: string): ActionState => ({
   ok: false,
   message: null,
@@ -333,13 +335,12 @@ export async function updateProfileAction(
     return failure(parsed.error.issues[0]?.message ?? "Check the form.");
   }
 
-  const result = await sendJson(
-    `/api/users/${encodeURIComponent(user.slug)}`,
-    "PUT",
-    { name: parsed.data.name, usn: parsed.data.usn || null }
-  );
+  const ok = await updateUserProfile(user.id, {
+    name: parsed.data.name,
+    usn: parsed.data.usn || null,
+  });
 
-  if (!result.ok) return failure(result.error ?? "Could not save your profile.");
+  if (!ok) return failure("Could not save your profile.");
 
   revalidatePath("/dashboard");
   return success("Profile updated.");
