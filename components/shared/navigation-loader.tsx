@@ -41,6 +41,7 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
   const [visible, setVisible] = useState(false);
   const startedAt = useRef(0);
   const previousPathname = useRef(pathname);
+  const resetScrollOnNavigation = useRef(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const safetyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -95,6 +96,9 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
         return;
       }
 
+      resetScrollOnNavigation.current =
+        url.pathname !== window.location.pathname;
+
       showLoader(getLoadingLabel(url));
 
       if (url.pathname === window.location.pathname) {
@@ -116,6 +120,15 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
     if (pathname === previousPathname.current) return;
 
     previousPathname.current = pathname;
+
+    if (resetScrollOnNavigation.current) {
+      // Shared App Router layouts can retain the outgoing page's scroll
+      // position. Reset underneath the loader so every destination opens at
+      // its own hero while same-page filters and hash links stay untouched.
+      window.scrollTo(0, 0);
+      resetScrollOnNavigation.current = false;
+    }
+
     const elapsed = performance.now() - startedAt.current;
     const remaining = Math.max(0, MINIMUM_DISPLAY_MS - elapsed);
 
