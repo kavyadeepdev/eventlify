@@ -1,68 +1,65 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import { ClubApiData } from "@/lib/types";
-import { ArrowRight, Building2 } from "lucide-react";
-import {
-  Card,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { ArrowUpRight, Building2 } from "lucide-react";
+import type { ClubApiData } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface ClubCardProps {
   club: ClubApiData;
+  index?: number;
+  eventCount?: number;
 }
 
-export default function ClubCard({ club }: ClubCardProps) {
+const CLUB_TONES = [
+  "club-card--violet",
+  "club-card--orange",
+  "club-card--acid",
+  "club-card--aqua",
+] as const;
+
+export default function ClubCard({ club, index = 0, eventCount }: ClubCardProps) {
   return (
-    <Card className="group flex flex-col h-full overflow-hidden transition-all">
-      {/* Top Banner Gradient */}
-      <div className="relative w-full h-24 overflow-hidden bg-gradient-to-r from-primary/20 via-muted to-accent/20">
-        <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
+    <Link
+      href={`/clubs/${club.slug}`}
+      className={cn("club-card group", CLUB_TONES[index % CLUB_TONES.length])}
+    >
+      <div className="club-card__top">
+        <span className="club-card__number" aria-hidden="true">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <span className="club-card__logo">
+          {club.logo ? (
+            <Image
+              src={club.logo}
+              alt=""
+              fill
+              sizes="72px"
+              className="object-cover"
+            />
+          ) : (
+            <Building2 className="size-7" />
+          )}
+        </span>
       </div>
 
-      {/* Profile Logo & Info */}
-      <CardContent className="p-5 pt-0 flex-1 flex flex-col justify-between -mt-10 relative z-10 space-y-4">
-        <div>
-          {/* Logo Badge */}
-          <div className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-background bg-muted shadow-md mb-3 flex items-center justify-center">
-            {club.logo ? (
-              <Image src={club.logo} alt={club.name} fill className="object-cover" />
-            ) : (
-              <Building2 className="w-8 h-8 text-muted-foreground" />
-            )}
-          </div>
+      <div className="club-card__body">
+        <span className="club-card__eyebrow">Student-led · BMSCE-wide</span>
+        <h3 className="display mt-3 text-3xl leading-none">{club.name}</h3>
+        <p className="mt-4 line-clamp-3 min-h-[4.5rem] text-sm leading-relaxed text-ink/62">
+          {club.description}
+        </p>
 
-          {/* Club Title */}
-          <CardTitle className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
-            {club.name}
-          </CardTitle>
-
-          {/* Short description */}
-          <CardDescription className="text-xs text-muted-foreground mt-3 line-clamp-3 leading-relaxed">
-            {club.description}
-          </CardDescription>
+        <div className="club-card__footer">
+          <span>
+            {eventCount === undefined
+              ? "BMSCE partner"
+              : `${eventCount} event${eventCount === 1 ? "" : "s"}`}
+          </span>
+          <span className="club-card__arrow">
+            <ArrowUpRight className="size-5" />
+          </span>
         </div>
-      </CardContent>
-
-      <Separator />
-
-      {/* Footer Link Button */}
-      <CardFooter className="p-5 py-3 flex items-center justify-between">
-        <span className="text-xs text-muted-foreground font-medium">Campus Partner</span>
-
-        <Link href={`/clubs/${club.slug}`}>
-          <Button size="sm" variant="outline" className="gap-1.5">
-            <span>View Club</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
-        </Link>
-      </CardFooter>
-    </Card>
+      </div>
+    </Link>
   );
 }

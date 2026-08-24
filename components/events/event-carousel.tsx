@@ -1,198 +1,258 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import {
+  ArrowRight,
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  Pause,
+  Play,
+  Users,
+} from "lucide-react";
 import { EventApiData, ClubApiData } from "@/lib/types";
-import { ChevronLeft, ChevronRight, Calendar, Users, Sparkles, ArrowRight, Pause, Play, Building2 } from "lucide-react";
+import {
+  accentFor,
+  formatDateStamp,
+  formatTime,
+  getEventState,
+  teamSizeLabel,
+} from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Card, CardContent } from "@/components/ui/card";
+import Countdown from "./countdown";
+import { DEFAULT_ART } from "./event-card";
+import { cn } from "@/lib/utils";
 
 interface EventCarouselProps {
   events: EventApiData[];
   clubsMap?: Record<string, ClubApiData>;
 }
 
-export default function EventCarousel({ events, clubsMap = {} }: EventCarouselProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
+const ROTATION_MS = 7000;
 
-  const nextSlide = useCallback(() => {
-    if (!events.length) return;
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % events.length);
+export default function EventCarousel({
+  events,
+  clubsMap = {},
+}: EventCarouselProps) {
+  const [index, setIndex] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const [progress, setProgress] = useState(0);
+
+  const next = useCallback(() => {
+    setIndex((current) => (current + 1) % events.length);
   }, [events.length]);
 
-  const prevSlide = () => {
-    if (!events.length) return;
-    setCurrentIndex((prevIndex) => (prevIndex - 1 + events.length) % events.length);
-  };
+  const previous = useCallback(() => {
+    setIndex((current) => (current - 1 + events.length) % events.length);
+  }, [events.length]);
 
+  // One timer drives both the ring and the slide change, so they stay in sync.
   useEffect(() => {
-    if (!isPlaying || !events.length) return;
-    const interval = setInterval(() => {
-      nextSlide();
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [isPlaying, nextSlide, events.length]);
+    if (!playing || events.length < 2) return;
+
+    const started = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - started;
+      if (elapsed >= ROTATION_MS) {
+        next();
+        setProgress(0);
+      } else {
+        setProgress(elapsed / ROTATION_MS);
+      }
+    }, 50);
+
+    return () => clearInterval(timer);
+  }, [playing, next, events.length, index]);
 
   if (!events.length) return null;
 
-  const currentEvent = events[currentIndex];
-  const hostClub = clubsMap[currentEvent.clubId];
-
-  const startDate = new Date(currentEvent.startsAt).toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-
-  const defaultArt =
-    "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1200&auto=format&fit=crop";
+  const event = events[Math.min(index, events.length - 1)];
+  const club = clubsMap[event.clubId];
+  const accent = accentFor(index);
+  const stamp = formatDateStamp(event.startsAt);
+  const state = getEventState(event);
 
   return (
-    <Card className="relative w-full rounded-xl overflow-hidden shadow-sm group">
-      <CardContent className="p-0">
-        <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-6 items-center p-6 sm:p-8 lg:p-10 bg-card">
-          {/* Left Side: Text Details */}
-          <div className="lg:col-span-7 space-y-5 z-10">
-            {/* Top badge */}
+    <section className="brutal-lg relative overflow-hidden rounded-3xl bg-card">
+      <div className={cn("relative border-b-[3px] border-ink", accent)}>
+        {/* Ghost headline, the way a gig poster repeats its own name */}
+        <span
+          aria-hidden="true"
+          className="display animate-float-slow pointer-events-none absolute -right-4 top-2 hidden select-none text-[8rem] leading-none opacity-15 lg:block"
+        >
+          {event.name.split(" ")[0]}
+        </span>
+
+        <div
+          key={event.id}
+          className="slide-enter relative grid gap-8 p-6 sm:p-10 lg:grid-cols-12 lg:items-center"
+        >
+          <div className="space-y-5 lg:col-span-7">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="default" className="gap-1.5 px-3 py-1 font-semibold">
-                <Sparkles className="w-3.5 h-3.5" />
-                Featured Event
-              </Badge>
+              <span className="sticker bg-paper px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-ink">
+                ★ Featured
+              </span>
+              <span
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full border-2 border-ink px-3 py-1 text-[11px] font-bold uppercase tracking-wide",
+                  state.chipClass
+                )}
+              >
+                {state.status === "LIVE" ? (
+                  <span className="size-2 animate-blink rounded-full bg-current" />
+                ) : null}
+                {state.label}
+              </span>
             </div>
 
-            {/* Event Title */}
-            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight leading-tight">
-              {currentEvent.name}
+            <h2 className="display text-4xl sm:text-6xl lg:text-7xl">
+              {event.name}
             </h2>
 
-            {/* Description */}
-            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-2xl line-clamp-3">
-              {currentEvent.description}
+            <p className="max-w-xl text-sm leading-relaxed sm:text-base">
+              {event.description.length > 180
+                ? `${event.description.slice(0, 180)}…`
+                : event.description}
             </p>
 
-            {/* Metadata Row */}
-            <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs sm:text-sm text-muted-foreground pt-2 border-t border-border">
-              <div className="flex items-center gap-2 text-foreground font-medium">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span>Starts: {startDate}</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 rounded-full border-2 border-ink bg-paper px-3 py-1.5 text-xs font-bold uppercase text-ink">
+                <Users className="size-3.5" />
+                {teamSizeLabel(event)}
               </div>
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <span>
-                  {currentEvent.minTeamSize === 1 && currentEvent.maxTeamSize === 1
-                    ? "Solo Entry"
-                    : `Team (${currentEvent.minTeamSize}-${currentEvent.maxTeamSize})`}
-                </span>
-              </div>
-            </div>
-
-            {/* Organizing Club */}
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground font-medium">Organized by:</span>
-                {hostClub ? (
-                  <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-muted border border-border">
-                    {hostClub.logo ? (
-                      <div className="relative w-4 h-4 rounded-full overflow-hidden">
-                        <Image src={hostClub.logo} alt={hostClub.name} fill className="object-cover" />
-                      </div>
-                    ) : (
-                      <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
-                    )}
-                    <span className="text-xs font-medium text-foreground">{hostClub.name}</span>
-                  </div>
+              <div className="flex items-center gap-2 rounded-full border-2 border-ink bg-paper px-3 py-1.5 text-xs font-bold uppercase text-ink">
+                {club ? (
+                  club.logo ? (
+                    <span className="relative size-4 overflow-hidden rounded-full">
+                      <Image
+                        src={club.logo}
+                        alt=""
+                        fill
+                        sizes="16px"
+                        className="object-cover"
+                      />
+                    </span>
+                  ) : (
+                    <Building2 className="size-3.5" />
+                  )
                 ) : (
-                  <span className="text-xs font-medium text-foreground">Campus Club</span>
+                  <Building2 className="size-3.5" />
                 )}
+                {club?.name ?? "BMSCE club"}
               </div>
             </div>
 
-            {/* CTA Button */}
-            <div className="flex items-center gap-4 pt-2">
-              <Link href={`/events/${currentEvent.slug}`}>
-                <Button variant="default" size="lg" className="gap-2">
-                  <span>Explore Event</span>
-                  <ArrowRight className="w-4 h-4" />
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <Link href={`/events/${event.slug}`}>
+                <Button size="lg" className="gap-2">
+                  {state.registrationOpen ? "Grab your spot" : "See details"}
+                  <ArrowRight className="size-4" />
+                </Button>
+              </Link>
+              <Link href="/events">
+                <Button size="lg" variant="outline">
+                  Browse all
                 </Button>
               </Link>
             </div>
           </div>
 
-          {/* Right Side: Visual Image Banner */}
-          <div className="lg:col-span-5 relative w-full h-64 sm:h-80 lg:h-96 rounded-lg overflow-hidden border border-border shadow-sm group/img bg-muted">
-            <Image
-              src={currentEvent.art || defaultArt}
-              alt={currentEvent.name}
-              fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 45vw"
-              className="object-cover group-hover/img:scale-105 transition-transform duration-500"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+          {/* Poster panel: art, big time stamp, live countdown */}
+          <div className="lg:col-span-5">
+            <div className="brutal shine overflow-hidden rounded-2xl bg-paper text-ink">
+              <div className="relative h-48 w-full border-b-[3px] border-ink sm:h-56">
+                <Image
+                  src={event.art || DEFAULT_ART}
+                  alt=""
+                  fill
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 40vw"
+                  className="scale-105 object-cover transition-transform duration-[6000ms] ease-out"
+                />
+              </div>
 
-            {/* Slide Indicator counter */}
-            <div className="absolute top-4 right-4">
-              <Badge variant="secondary" className="text-xs font-semibold px-3 py-1">
-                {currentIndex + 1} / {events.length}
-              </Badge>
+              <div className="space-y-3 p-5 text-center">
+                <p className="text-xs font-bold uppercase tracking-[0.3em]">
+                  {stamp.day} {stamp.month}
+                </p>
+                <p className="display text-6xl leading-none">
+                  {formatTime(event.startsAt)}
+                </p>
+                <Countdown
+                  target={event.startsAt}
+                  passedLabel="Under way!"
+                  className="justify-center pt-1"
+                />
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <Separator />
-
-        {/* Carousel Controls Bar */}
-        <div className="flex items-center justify-between px-6 py-3 bg-card">
-          {/* Navigation Dots */}
-          <div className="flex items-center gap-2">
-            {events.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentIndex(idx)}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  currentIndex === idx
-                    ? "w-8 bg-primary shadow-sm"
-                    : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
-                }`}
-                aria-label={`Go to slide ${idx + 1}`}
-              />
-            ))}
-          </div>
-
-          {/* Controls: Play/Pause & Prev/Next */}
-          <div className="flex items-center gap-2">
-            <Button
-              size="icon-sm"
-              variant="outline"
-              onClick={() => setIsPlaying(!isPlaying)}
-              title={isPlaying ? "Pause auto-play" : "Start auto-play"}
-            >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            </Button>
-            <Button
-              size="icon-sm"
-              variant="outline"
-              onClick={prevSlide}
-              aria-label="Previous Slide"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <Button
-              size="icon-sm"
-              variant="outline"
-              onClick={nextSlide}
-              aria-label="Next Slide"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
+      {/* Controls */}
+      <div className="flex items-center justify-between gap-4 bg-card px-5 py-3">
+        <div className="flex items-center gap-1.5">
+          {events.slice(0, 8).map((item, dot) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setIndex(dot)}
+              aria-label={`Show ${item.name}`}
+              aria-current={dot === index}
+              className={cn(
+                "h-3 rounded-full border-2 border-ink transition-all",
+                dot === index ? "w-9 bg-ink" : "w-3 bg-paper hover:bg-zest"
+              )}
+            />
+          ))}
         </div>
-      </CardContent>
-    </Card>
+
+        <div className="flex items-center gap-2">
+          <span className="relative inline-flex">
+            {/* Conic ring shows how long until the next slide. */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute -inset-1 rounded-full"
+              style={{
+                background: `conic-gradient(var(--color-grape) ${(playing ? progress : 0) * 360}deg, transparent 0deg)`,
+                opacity: playing ? 1 : 0,
+                transition: "opacity 0.2s ease",
+              }}
+            />
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => setPlaying((value) => !value)}
+              aria-label={playing ? "Pause autoplay" : "Resume autoplay"}
+              className="relative"
+            >
+              {playing ? (
+                <Pause className="size-4" />
+              ) : (
+                <Play className="size-4" />
+              )}
+            </Button>
+          </span>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            onClick={previous}
+            aria-label="Previous event"
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            onClick={next}
+            aria-label="Next event"
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      </div>
+    </section>
   );
 }

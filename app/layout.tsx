@@ -1,9 +1,30 @@
 import type { Metadata } from "next";
+import { Anton, Space_Grotesk } from "next/font/google";
+import Header from "@/components/layout/header";
+import Footer from "@/components/layout/footer";
+import NavigationLoader from "@/components/shared/navigation-loader";
 import "./globals.css";
 
+const anton = Anton({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-anton",
+  display: "swap",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-grotesk",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Eventlify",
-  description: "Platform to discover, register, and manage campus events and clubs.",
+  title: {
+    default: "AfterClass — BMSCE events, clubs & hackathons",
+    template: "%s · AfterClass",
+  },
+  description:
+    "The place to discover, register, and manage events and clubs at BMSCE.",
 };
 
 export default function RootLayout({
@@ -12,8 +33,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased">{children}</body>
+    <html lang="en" className={`${anton.variable} ${spaceGrotesk.variable}`}>
+      <body className="antialiased">
+        <div className="flex min-h-screen flex-col">
+          <Header />
+          <NavigationLoader>
+            <div className="flex-1">{children}</div>
+          </NavigationLoader>
+          <Footer />
+        </div>
+      </body>
     </html>
   );
 }

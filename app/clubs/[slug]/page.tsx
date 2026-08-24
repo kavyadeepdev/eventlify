@@ -1,230 +1,277 @@
-"use client";
-
-import { useState, useEffect, use } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import Header from "@/components/layout/header";
-import Footer from "@/components/layout/footer";
-import EventCard from "@/components/events/event-card";
-import { fetchClubBySlug, fetchEventsByClubSlug } from "@/lib/api-client";
-import { ClubDetailApiResponse, EventApiData } from "@/lib/types";
-import {
-  Users,
-  Calendar,
-  Mail,
-  Globe,
-  Code2,
-  ArrowLeft,
-  Layers,
-  Building2,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { ArrowLeft, Building2, ExternalLink, Mail, Plus } from "lucide-react";
+import {
+  fetchClubBySlug,
+  fetchEventsByClubSlug,
+  fetchUsers,
+} from "@/lib/api-client";
+import { getSessionUser } from "@/lib/session";
+import { getEventState } from "@/lib/format";
+import EventCard from "@/components/events/event-card";
+import MemberManager from "@/components/clubs/member-manager";
+import Avatar from "@/components/shared/avatar";
+import EmptyState from "@/components/shared/empty-state";
+import WaveEdge from "@/components/shared/wave-edge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export default function SingleClubPage({
+type Params = Promise<{ slug: string }>;
+
+export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = use(params);
-  const [data, setData] = useState<ClubDetailApiResponse | null>(null);
-  const [events, setEvents] = useState<EventApiData[]>([]);
-  const [loading, setLoading] = useState(true);
+  params: Params;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const data = await fetchClubBySlug(slug);
+  if (!data?.club) return { title: "Club not found" };
 
-  useEffect(() => {
-    async function loadClubData() {
-      setLoading(true);
-      const [fetchedClubData, fetchedEvents] = await Promise.all([
-        fetchClubBySlug(slug),
-        fetchEventsByClubSlug(slug),
-      ]);
-      setData(fetchedClubData);
-      setEvents(fetchedEvents);
-      setLoading(false);
-    }
-    loadClubData();
-  }, [slug]);
+  return {
+    title: data.club.name,
+    description: data.club.description.slice(0, 160),
+  };
+}
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background text-foreground">
-        <Header />
-        <main className="flex-1 max-w-7xl mx-auto px-4 py-16 text-center text-xs text-muted-foreground w-full">
-          Loading club details...
-        </main>
-        <Footer />
-      </div>
-    );
-  }
+export default async function ClubDetailPage({ params }: { params: Params }) {
+  const { slug } = await params;
 
-  if (!data || !data.club) {
-    notFound();
-  }
+  const [data, events, user] = await Promise.all([
+    fetchClubBySlug(slug),
+    fetchEventsByClubSlug(slug),
+    getSessionUser(),
+  ]);
+
+  if (!data?.club) notFound();
 
   const { club, members, contacts, links } = data;
 
+  const isAdmin = Boolean(
+    user &&
+      members.some(
+        (member) => member.userId === user.id && member.role === "ADMIN"
+      )
+  );
+
+  const students = isAdmin ? await fetchUsers() : [];
+
+  const upcoming = events.filter((event) => {
+    const status = getEventState(event).status;
+    return status === "UPCOMING" || status === "LIVE";
+  });
+  const past = events.filter((event) => !upcoming.includes(event));
+
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <Header />
+    <>
+      <section className="relative overflow-hidden bg-aqua">
+        <div aria-hidden="true" className="halftone absolute inset-0 opacity-20" />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10 w-full">
-        {/* Back Link */}
-        <Link href="/clubs">
-          <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to All Clubs</span>
-          </Button>
-        </Link>
+        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <Link
+            href="/clubs"
+            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-opacity hover:opacity-70"
+          >
+            <ArrowLeft className="size-4" />
+            All clubs
+          </Link>
 
-        {/* Club Profile Hero Banner */}
-        <Card className="relative rounded-xl overflow-hidden shadow-sm">
-          {/* Top Banner Gradient */}
-          <div className="relative w-full h-44 sm:h-56 overflow-hidden bg-gradient-to-r from-primary/20 via-muted to-accent/20">
-            <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
-          </div>
-
-          {/* Profile Header Content */}
-          <CardContent className="p-6 sm:p-10 -mt-16 sm:-mt-20 relative z-10 space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5">
-                {/* Club Logo Avatar */}
-                <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-2xl overflow-hidden border-4 border-background bg-muted shadow-lg shrink-0 flex items-center justify-center">
-                  {club.logo ? (
-                    <Image src={club.logo} alt={club.name} fill className="object-cover" />
-                  ) : (
-                    <Building2 className="w-12 h-12 text-muted-foreground" />
-                  )}
+          <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-end">
+            <div className="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-[3px] border-ink bg-paper shadow-[5px_5px_0_var(--color-ink)]">
+              {club.logo ? (
+                <div className="relative size-full">
+                  <Image
+                    src={club.logo}
+                    alt=""
+                    fill
+                    sizes="112px"
+                    className="object-cover"
+                  />
                 </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-3">
-                    <Badge variant="secondary">Campus Partner</Badge>
-                  </div>
-                  <h1 className="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight">
-                    {club.name}
-                  </h1>
-                </div>
-              </div>
-
-              {/* Stats badges */}
-              <div className="flex items-center gap-3">
-                <div className="px-4 py-2 rounded-lg bg-muted border border-border text-center">
-                  <span className="block text-lg font-bold text-foreground">{members.length}</span>
-                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">Members</span>
-                </div>
-                <div className="px-4 py-2 rounded-lg bg-muted border border-border text-center">
-                  <span className="block text-lg font-bold text-foreground">{events.length}</span>
-                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">Events Hosted</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-4xl">
-              {club.description}
-            </p>
-
-            <Separator />
-
-            {/* Social Links & Contact Channels */}
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-3">
-                {links.map((link) => (
-                  <a
-                    key={link.id}
-                    href={link.url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <Button variant="outline" size="sm" className="gap-2">
-                      {link.type === "GITHUB" && <Code2 className="w-3.5 h-3.5" />}
-                      {link.type === "WEBSITE" && <Globe className="w-3.5 h-3.5" />}
-                      {link.type === "LINKEDIN" && <Globe className="w-3.5 h-3.5" />}
-                      <span>{link.title}</span>
-                    </Button>
-                  </a>
-                ))}
-              </div>
-
-              {contacts.length > 0 && (
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <Mail className="w-4 h-4" />
-                  <span>Contact: {contacts[0].value}</span>
-                </div>
+              ) : (
+                <Building2 className="size-12" />
               )}
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Club Members & Leadership Team */}
-        <Card className="p-6 sm:p-8 space-y-4">
-          <CardContent className="p-0 space-y-4">
-            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Users className="w-5 h-5 text-muted-foreground" />
-              Club Officers & Members
-            </h3>
-            {members.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {members.map((member) => (
-                  <div key={member.userId} className="flex items-center gap-3 p-3.5 rounded-lg bg-muted border border-border">
-                    <div className="relative w-10 h-10 rounded-md overflow-hidden border border-border bg-card shrink-0 flex items-center justify-center text-xs font-bold text-muted-foreground">
-                      {member.image ? (
-                        <Image src={member.image} alt={member.name} fill className="object-cover" />
-                      ) : (
-                        <span>{member.name.charAt(0)}</span>
-                      )}
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-foreground">{member.name}</h4>
-                      <span className="text-xs text-muted-foreground font-medium uppercase">{member.role}</span>
-                    </div>
-                  </div>
-                ))}
+            <div className="space-y-3">
+              <h1 className="display text-[2.9rem] leading-[0.95] sm:text-7xl">
+                {club.name}
+              </h1>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full border-2 border-ink bg-paper px-3 py-1 text-[11px] font-bold uppercase tracking-wide">
+                  {members.length} member{members.length === 1 ? "" : "s"}
+                </span>
+                <span className="rounded-full border-2 border-ink bg-paper px-3 py-1 text-[11px] font-bold uppercase tracking-wide">
+                  {events.length} event{events.length === 1 ? "" : "s"}
+                </span>
+                {isAdmin ? (
+                  <span className="rounded-full border-2 border-ink bg-grape px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
+                    You&apos;re an admin
+                  </span>
+                ) : null}
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">No members listed yet.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Events Held by this Club Section */}
-        <section className="space-y-6 pt-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-foreground" />
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                Events Organized by {club.name}
-              </h2>
             </div>
-            <span className="text-xs text-muted-foreground font-medium">
-              {events.length} events listed
-            </span>
+          </div>
+        </div>
+      </section>
+
+      <WaveEdge fill="var(--color-aqua)" className="bg-background" />
+
+      <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-12">
+          <div className="space-y-12 lg:col-span-8">
+            <section className="space-y-4">
+              <h2 className="display text-3xl sm:text-4xl">About</h2>
+              <div className="brutal rounded-2xl bg-card p-6">
+                <p className="whitespace-pre-line leading-relaxed">
+                  {club.description}
+                </p>
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="display text-3xl sm:text-4xl">
+                  Upcoming events
+                </h2>
+                {isAdmin ? (
+                  <Link href="/events/new">
+                    <Button size="sm" variant="secondary" className="gap-1.5">
+                      <Plus className="size-4" />
+                      New event
+                    </Button>
+                  </Link>
+                ) : null}
+              </div>
+
+              {upcoming.length ? (
+                <div className="grid gap-6 sm:grid-cols-2">
+                  {upcoming.map((event, index) => (
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      club={club}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  title="Nothing scheduled"
+                  description={`${club.name} has no upcoming events listed.`}
+                />
+              )}
+            </section>
+
+            {past.length ? (
+              <section className="space-y-4">
+                <h2 className="display text-3xl sm:text-4xl">Past events</h2>
+                <div className="grid gap-6 sm:grid-cols-2">
+                  {past.map((event, index) => (
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      club={club}
+                      index={index + 3}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {isAdmin ? (
+              <section className="space-y-4">
+                <h2 className="display text-3xl sm:text-4xl">Admin</h2>
+                <MemberManager
+                  clubSlug={club.slug}
+                  members={members}
+                  students={students}
+                />
+              </section>
+            ) : null}
           </div>
 
-          {events.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {events.map((event) => (
-                <EventCard key={event.id} event={event} club={club} />
-              ))}
-            </div>
-          ) : (
-            <Card className="p-10 text-center space-y-2">
-              <CardContent className="p-0">
-                <Layers className="w-10 h-10 text-muted-foreground mx-auto" />
-                <h3 className="text-base font-semibold text-foreground mt-2">No Active Events</h3>
-                <p className="text-xs text-muted-foreground">
-                  This club does not have any active events scheduled right now. Check back soon!
+          <aside className="space-y-6 lg:col-span-4">
+            <div className="brutal rounded-2xl bg-card p-6">
+              <h3 className="display text-2xl">Members</h3>
+              {members.length ? (
+                <ul className="mt-4 space-y-3">
+                  {members.map((member) => (
+                    <li key={member.userId} className="flex items-center gap-3">
+                      <Avatar name={member.name} image={member.image} size="sm" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-bold">
+                          {member.name}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-full border-2 border-ink px-2 py-0.5 text-[10px] font-bold uppercase",
+                          member.role === "ADMIN"
+                            ? "bg-grape text-white"
+                            : "bg-zest"
+                        )}
+                      >
+                        {member.role}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  No members listed yet.
                 </p>
-              </CardContent>
-            </Card>
-          )}
-        </section>
-      </main>
+              )}
+            </div>
 
-      <Footer />
-    </div>
+            {links.length ? (
+              <div className="brutal rounded-2xl bg-card p-6">
+                <h3 className="display text-2xl">Links</h3>
+                <ul className="mt-4 space-y-2">
+                  {links.map((link) => (
+                    <li key={link.id}>
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-between gap-2 rounded-xl border-2 border-ink bg-paper px-3 py-2 text-sm font-bold transition-transform hover:-translate-y-0.5"
+                      >
+                        <span className="truncate">{link.title}</span>
+                        <ExternalLink className="size-4 shrink-0" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {contacts.length ? (
+              <div className="brutal rounded-2xl bg-card p-6">
+                <h3 className="display text-2xl">Contact</h3>
+                <ul className="mt-4 space-y-2">
+                  {contacts.map((contact) => (
+                    <li
+                      key={contact.id}
+                      className="flex items-center justify-between gap-2 rounded-xl border-2 border-ink bg-paper px-3 py-2 text-sm"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-bold">
+                          {contact.title}
+                        </span>
+                        <span className="block truncate text-muted-foreground">
+                          {contact.value}
+                        </span>
+                      </span>
+                      <Mail className="size-4 shrink-0" />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </aside>
+        </div>
+      </main>
+    </>
   );
 }

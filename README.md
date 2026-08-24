@@ -1,4 +1,4 @@
-# Eventlify
+# AfterClass
 
 A modern web application built for managing campus events, student clubs, participant registrations, and attendance tracking.
 
@@ -6,7 +6,7 @@ A modern web application built for managing campus events, student clubs, partic
 
 ## Overview
 
-Eventlify is a central platform that enables campus clubs to publish events, manage club memberships, and coordinate student registrations. It supports both individual and team-based event registrations, enforces event constraints (such as team size and registration deadlines), and tracks participant check-ins and attendance.
+AfterClass is a central platform that enables campus clubs to publish events, manage club memberships, and coordinate student registrations. It supports both individual and team-based event registrations, enforces event constraints (such as team size and registration deadlines), and tracks participant check-ins and attendance.
 
 ---
 
@@ -16,7 +16,7 @@ Eventlify is a central platform that enables campus clubs to publish events, man
 * **Event Discovery & Publishing**: Host and browse campus workshops, hackathons, and competitions with detailed timelines and cover art.
 * **Flexible Event Registrations**: Register as an individual or form a team while enforcing min/max team size requirements and registration deadlines.
 * **Attendance Tracking**: Verify and log participant check-ins for events.
-* **Authentication**: Multi-provider user authentication (Email/Password and Google OAuth) powered by Better-Auth.
+* **Authentication**: Google OAuth sign-in powered by Better-Auth (email/password is disabled).
 * **Contacts & Links**: Polymorphic resource sharing for social links, rulebooks, and contact channels attached to clubs or events.
 
 ---
@@ -38,13 +38,19 @@ Eventlify is a central platform that enables campus clubs to publish events, man
 event-app/
 ├── app/                        # Next.js App Router routes, pages, and API endpoints
 │   ├── api/                    # REST API routes (auth, clubs, events, users)
-│   ├── events/                 # Event details and discovery pages
+│   ├── events/                 # Discovery, event detail, publishing, organiser tools
+│   ├── clubs/                  # Club directory, club profiles, club registration
+│   ├── dashboard/              # Signed-in student's passes, check-ins, and profile
 │   ├── login/                  # User login page
 │   └── signup/                 # User registration page
 ├── components/                 # Reusable UI components & shadcn primitives
 ├── lib/                        # Core database client, auth config, and helper utilities
 │   ├── auth.ts                 # Server-side Better Auth setup
 │   ├── auth-client.ts          # Client-side auth hooks
+│   ├── session.ts              # Server-side session helper for pages/actions
+│   ├── actions.ts              # Server Actions for registration, check-in, publishing
+│   ├── api-client.ts           # Typed fetch helpers for the REST API
+│   ├── format.ts               # Date, event-state, and presentation helpers
 │   ├── db.ts                   # postgres.js client initialization
 │   └── utils.ts                # Class merge helpers (cn)
 ├── migrations/                 # PostgreSQL domain migration scripts

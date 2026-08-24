@@ -1,14 +1,25 @@
 import { betterAuth } from "better-auth";
 import { PostgresJSDialect } from "kysely-postgres-js";
-import sql from "./db";
+import postgres from "postgres";
 
 const googleCliendId = process.env.GOOGLE_CLIENT_ID;
 const googleCliendSecret = process.env.GOOGLE_CLIENT_SECRET;
 
+/**
+ * Better Auth gets its own connection, deliberately WITHOUT the
+ * `transform: postgres.camel` used by the app client in `lib/db.ts`.
+ *
+ * That transform rewrites returned column names (`user_id` -> `userId`), which
+ * hides them from Better Auth's own snake_case field mapping: sessions were
+ * read back as `{ id, token }` with no `userId` or `expiresAt`, so every
+ * session lookup failed and users never appeared signed in.
+ */
+const authSql = postgres(process.env.DATABASE_URI as string);
+
 export const auth = betterAuth({
   database: {
     dialect: new PostgresJSDialect({
-      postgres: sql,
+      postgres: authSql,
     }),
     type: "postgres",
     casing: "snake",

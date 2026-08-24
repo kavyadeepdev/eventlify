@@ -1,99 +1,55 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { ArrowUpRight, LogIn } from "lucide-react";
+import { getSessionUser } from "@/lib/session";
 import { Button } from "@/components/ui/button";
-import { Calendar, Compass, Building2, LogIn, UserPlus, Search } from "lucide-react";
-import { authClient } from "@/lib/auth-client";
+import AfterClassMark from "@/components/brand/afterclass-mark";
+import ScrollProgress from "@/components/shared/scroll-progress";
+import NavLinks from "./nav-links";
+import MobileNav from "./mobile-nav";
+import UserMenu from "./user-menu";
 
-const Header = () => {
-  const pathname = usePathname();
-  const sessionResult = authClient.useSession();
-  const session = sessionResult?.data;
-
-  const handleSignOut = async () => {
-    await authClient.signOut();
-  };
-
-  const navLinks = [
-    { name: "Explore Events", href: "/events", icon: Compass },
-    { name: "Partnered Clubs", href: "/clubs", icon: Building2 },
-  ];
+export default async function Header() {
+  const user = await getSessionUser();
+  const dashboardHref = "/dashboard";
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
-            EL
-          </div>
-          <div>
-            <span className="text-base font-bold tracking-tight text-foreground">
-              Eventlify
+    <header className="sticky top-0 z-50 border-b-2 border-ink bg-paper/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
+        <Link href="/" className="group flex min-w-0 items-center gap-2.5" aria-label="AfterClass home">
+          <AfterClassMark className="size-10 shrink-0 transition-transform duration-300 ease-out group-hover:-rotate-6 group-hover:scale-105 sm:size-11" />
+          <span className="min-w-0">
+            <span className="block whitespace-nowrap text-[1.28rem] font-extrabold leading-none tracking-[-0.065em] sm:text-[1.55rem]">
+              <span>After</span><span className="text-grape">Class</span>
             </span>
-          </div>
+            <span className="mt-1 hidden text-[8px] font-black uppercase tracking-[0.23em] text-ink/45 sm:block">
+              BMSCE culture, live
+            </span>
+          </span>
         </Link>
 
-        {/* Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1">
-          <Link href="/">
-            <Button
-              variant={pathname === "/" ? "secondary" : "ghost"}
-              size="sm"
-              className="gap-2"
-            >
-              <Calendar className="w-4 h-4" />
-              Home
-            </Button>
-          </Link>
-          {navLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname.startsWith(link.href);
-            return (
-              <Link key={link.href} href={link.href}>
-                <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <Icon className="w-4 h-4" />
-                  {link.name}
-                </Button>
-              </Link>
-            );
-          })}
-        </nav>
+        <NavLinks isSignedIn={Boolean(user)} />
 
-        {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          <Link href="/events" className="md:hidden">
-            <Button variant="ghost" size="icon-sm">
-              <Search className="w-4 h-4" />
-            </Button>
-          </Link>
-
-          {session ? (
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground hidden sm:inline-block">
-                Hi, {session.user?.name || "Student"}
-              </span>
-              <Button onClick={handleSignOut} variant="outline" size="sm">
-                Sign Out
-              </Button>
-            </div>
+          {user ? (
+            <UserMenu
+              name={user.name}
+              image={user.image}
+              dashboardHref={dashboardHref}
+            />
           ) : (
             <Link href="/login">
-              <Button variant="default" size="sm" className="gap-1.5">
-                <LogIn className="w-4 h-4" />
-                Sign In
+              <Button size="sm" className="gap-1.5 bg-ink max-[350px]:size-9 max-[350px]:p-0" aria-label="Sign in">
+                <LogIn className="size-4" />
+                <span className="max-[350px]:hidden">Sign in</span>
+                <ArrowUpRight className="hidden size-3.5 sm:block" />
               </Button>
             </Link>
           )}
+          <MobileNav isSignedIn={Boolean(user)} />
         </div>
       </div>
+
+      <ScrollProgress />
     </header>
   );
-};
-
-export default Header;
+}

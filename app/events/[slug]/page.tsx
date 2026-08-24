@@ -1,410 +1,411 @@
-"use client";
-
-import { useState, useEffect, use } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import Header from "@/components/layout/header";
-import Footer from "@/components/layout/footer";
-import { fetchEventBySlug } from "@/lib/api-client";
-import { EventDetailApiResponse } from "@/lib/types";
-import {
-  Calendar,
-  Clock,
-  Users,
-  ExternalLink,
-  ChevronRight,
-  Sparkles,
-  Building2,
-  FileText,
-  ArrowLeft,
-  Mail,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import {
+  ArrowLeft,
+  Building2,
+  CheckCircle2,
+  Lock,
+  CalendarClock,
+  ClipboardList,
+  ExternalLink,
+  Flag,
+  Mail,
+  Timer,
+  Users,
+} from "lucide-react";
+import {
+  fetchClubBySlug,
+  fetchEventBySlug,
+  fetchEventRegistrations,
+  fetchUserHistory,
+  fetchUsers,
+} from "@/lib/api-client";
+import { getSessionUser } from "@/lib/session";
+import {
+  formatDateLong,
+  formatDateTime,
+  formatTime,
+  getEventState,
+  teamSizeLabel,
+} from "@/lib/format";
+import Countdown from "@/components/events/countdown";
+import RegisterPanel from "@/components/events/register-panel";
+import { DEFAULT_ART } from "@/components/events/event-card";
+import Avatar from "@/components/shared/avatar";
+import WaveEdge from "@/components/shared/wave-edge";
+import Reveal from "@/components/shared/reveal";
+import Tilt from "@/components/shared/tilt";
+import SplitText from "@/components/shared/split-text";
+import HeroBackdrop from "@/components/shared/hero-backdrop";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export default function SingleEventPage({
+type Params = Promise<{ slug: string }>;
+
+export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = use(params);
-  const [data, setData] = useState<EventDetailApiResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "club" | "resources">("overview");
+  params: Params;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const data = await fetchEventBySlug(slug);
+  if (!data?.event) return { title: "Event not found" };
 
-  useEffect(() => {
-    async function loadEvent() {
-      setLoading(true);
-      const res = await fetchEventBySlug(slug);
-      setData(res);
-      setLoading(false);
-    }
-    loadEvent();
-  }, [slug]);
+  return {
+    title: data.event.name,
+    description: data.event.description.slice(0, 160),
+  };
+}
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background text-foreground">
-        <Header />
-        <main className="flex-1 max-w-7xl mx-auto px-4 py-16 text-center text-xs text-muted-foreground w-full">
-          Loading event details...
-        </main>
-        <Footer />
-      </div>
-    );
-  }
+export default async function EventDetailPage({ params }: { params: Params }) {
+  const { slug } = await params;
 
-  if (!data || !data.event) {
-    notFound();
-  }
+  const [data, user] = await Promise.all([
+    fetchEventBySlug(slug),
+    getSessionUser(),
+  ]);
+
+  if (!data?.event) notFound();
 
   const { event, club, contacts, links } = data;
+  const state = getEventState(event);
 
-  const startDateFormatted = new Date(event.startsAt).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-  const startTimeFormatted = new Date(event.startsAt).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const endTimeFormatted = new Date(event.endsAt).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const deadlineFormatted = new Date(event.registrationDeadline).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  // Only fetch what each viewer actually needs.
+  const [registrations, students, history, clubDetail] = await Promise.all([
+    fetchEventRegistrations(slug),
+    state.registrationOpen && event.maxTeamSize > 1
+      ? fetchUsers()
+      : Promise.resolve([]),
+    user ? fetchUserHistory(user.slug) : Promise.resolve(null),
+    user && club ? fetchClubBySlug(club.slug) : Promise.resolve(null),
+  ]);
 
-  const defaultArt =
-    "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1200&auto=format&fit=crop";
+  const alreadyRegistered = Boolean(
+    history?.registrations.some((entry) => entry.eventId === event.id)
+  );
+
+  const canManage = Boolean(
+    user && clubDetail?.members.some((member) => member.userId === user.id)
+  );
+
+  const closedReason =
+    state.status === "ENDED"
+      ? "This event has already wrapped up."
+      : state.status === "LIVE"
+        ? "This event is under way — registrations are closed."
+        : `Registration closed on ${formatDateTime(event.registrationDeadline)}.`;
+
+  const facts = [
+    {
+      Icon: CalendarClock,
+      label: "Starts",
+      value: formatDateLong(event.startsAt),
+      detail: formatTime(event.startsAt),
+    },
+    {
+      Icon: Flag,
+      label: "Ends",
+      value: formatDateLong(event.endsAt),
+      detail: formatTime(event.endsAt),
+    },
+    {
+      Icon: Timer,
+      label: "Entries close",
+      value: formatDateLong(event.registrationDeadline),
+      detail: formatTime(event.registrationDeadline),
+    },
+    {
+      Icon: Users,
+      label: "Format",
+      value: teamSizeLabel(event),
+      detail: `${registrations.length} registered`,
+    },
+  ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <Header />
+    <>
+      {/* -------------------------------- hero -------------------------------- */}
+      <section className="grain relative overflow-hidden bg-grape text-white">
+        <HeroBackdrop />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 w-full">
-        {/* Back Link */}
-        <Link href="/events">
-          <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to All Events</span>
-          </Button>
-        </Link>
+        <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+          <Link
+            href="/events"
+            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/80 transition-colors hover:text-white"
+          >
+            <ArrowLeft className="size-4" />
+            All events
+          </Link>
 
-        {/* Hero Section Banner */}
-        <Card className="relative rounded-xl overflow-hidden shadow-sm">
-          {/* Background image & gradient overlay */}
-          <div className="absolute inset-0 bg-muted">
-            <Image
-              src={event.art || defaultArt}
-              alt={event.name}
-              fill
-              priority
-              className="object-cover opacity-20"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/80 to-transparent" />
-          </div>
-
-          <CardContent className="relative z-10 p-6 sm:p-10 space-y-4 max-w-3xl">
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge variant="default" className="gap-1">
-                <Sparkles className="w-3 h-3" />
-                Campus Event
-              </Badge>
-              {club && (
-                <Badge variant="secondary" className="gap-1">
-                  <Building2 className="w-3 h-3" />
-                  {club.name}
-                </Badge>
-              )}
-            </div>
-
-            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-foreground">
-              {event.name}
-            </h1>
-
-            {/* Quick badges */}
-            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground pt-2">
-              <div className="flex items-center gap-1.5 font-medium text-foreground">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span>{startDateFormatted}</span>
-              </div>
-              <span>•</span>
-              <div className="flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <span>
-                  {event.minTeamSize === 1 && event.maxTeamSize === 1
-                    ? "Individual Entry"
-                    : `Teams of ${event.minTeamSize}-${event.maxTeamSize}`}
+          <div className="mt-6 grid gap-8 lg:grid-cols-12 lg:items-center">
+            <div className="space-y-5 lg:col-span-7">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full border-2 border-ink px-3 py-1 text-[11px] font-bold uppercase tracking-wide",
+                    state.chipClass
+                  )}
+                >
+                  {state.status === "LIVE" ? (
+                    <span className="size-2 animate-blink rounded-full bg-current" />
+                  ) : null}
+                  {state.label}
                 </span>
+                {club ? (
+                  <Link
+                    href={`/clubs/${club.slug}`}
+                    className="flex items-center gap-2 rounded-full border-2 border-ink bg-paper px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-ink transition-transform hover:-translate-y-0.5"
+                  >
+                    {club.logo ? (
+                      <span className="relative size-4 overflow-hidden rounded-full">
+                        <Image
+                          src={club.logo}
+                          alt=""
+                          fill
+                          sizes="16px"
+                          className="object-cover"
+                        />
+                      </span>
+                    ) : (
+                      <Building2 className="size-3.5" />
+                    )}
+                    {club.name}
+                  </Link>
+                ) : null}
               </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Main Grid: Content Tabs (Left) + Sticky Sidebar (Right) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column (8 cols): Navigation Tabs & Tab Content */}
-          <div className="lg:col-span-8 space-y-6">
-            {/* Tabs Header Bar */}
-            <div className="flex items-center gap-2 p-1 rounded-lg border border-border bg-card overflow-x-auto scrollbar-none">
-              <Button
-                variant={activeTab === "overview" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("overview")}
-                className="gap-2"
-              >
-                <FileText className="w-4 h-4" />
-                Overview
-              </Button>
-              <Button
-                variant={activeTab === "club" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("club")}
-                className="gap-2"
-              >
-                <Building2 className="w-4 h-4" />
-                Organizing Club
-              </Button>
-              <Button
-                variant={activeTab === "resources" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("resources")}
-                className="gap-2"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Links & Contacts ({links.length + contacts.length})
-              </Button>
+              <h1 className="display max-w-full text-[clamp(2.65rem,12.5vw,4.5rem)] leading-[0.9] sm:text-7xl">
+                <SplitText text={event.name} delay={80} stagger={22} />
+              </h1>
+
+              <Countdown
+                target={event.startsAt}
+                passedLabel={state.status === "ENDED" ? "That's a wrap" : "Live now!"}
+              />
+
+              {canManage ? (
+                <Link href={`/events/${event.slug}/manage`}>
+                  <Button variant="secondary" className="gap-2">
+                    <ClipboardList className="size-4" />
+                    Organiser tools
+                  </Button>
+                </Link>
+              ) : null}
             </div>
 
-            {/* Tab 1: Overview */}
-            {activeTab === "overview" && (
-              <Card className="p-6 sm:p-8 space-y-6">
-                <CardContent className="p-0 space-y-6">
-                  {/* Event Image Banner */}
-                  <div className="relative w-full h-72 sm:h-96 rounded-lg overflow-hidden border border-border bg-muted">
-                    <Image
-                      src={event.art || defaultArt}
-                      alt={event.name}
-                      fill
-                      priority
-                      className="object-cover"
-                    />
-                  </div>
+            <div className="lg:col-span-5">
+              <Tilt max={9}>
+                <div className="brutal shine group relative h-56 overflow-hidden rounded-2xl bg-paper sm:h-72">
+                  <Image
+                    src={event.art || DEFAULT_ART}
+                    alt=""
+                    fill
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 40vw"
+                    className="object-cover transition-transform duration-[900ms] ease-out group-hover:scale-105"
+                  />
+                </div>
+              </Tilt>
+            </div>
+          </div>
+        </div>
+      </section>
 
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-semibold text-foreground">About the Event</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                      {event.description}
+      <WaveEdge fill="var(--color-grape)" className="bg-background" />
+
+      <main className="mx-auto w-full max-w-7xl px-4 py-12 pb-28 sm:px-6 lg:px-8 lg:pb-12">
+        <div className="grid gap-10 lg:grid-cols-12">
+          <div className="space-y-10 lg:col-span-8">
+            {/* fact grid */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {facts.map(({ Icon, label, value, detail }) => (
+                <Reveal key={label}>
+                  <div className="brutal shine rounded-2xl bg-card p-5">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                      <Icon className="size-4" />
+                      {label}
+                    </div>
+                    <p className="mt-2 text-lg font-bold leading-tight">
+                      {value}
                     </p>
+                    <p className="text-sm text-muted-foreground">{detail}</p>
                   </div>
+                </Reveal>
+              ))}
+            </div>
 
-                  <Separator />
+            {/* about */}
+            <Reveal className="space-y-4">
+              <h2 className="display text-3xl sm:text-4xl">What&apos;s the deal</h2>
+              <div className="brutal rounded-2xl bg-card p-6">
+                <p className="whitespace-pre-line text-base leading-relaxed">
+                  {event.description}
+                </p>
+              </div>
+            </Reveal>
 
-                  {/* Key Details Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg bg-muted border border-border space-y-1">
-                      <span className="text-xs text-muted-foreground">Team Size Constraint</span>
-                      <p className="text-sm font-semibold text-foreground">
-                        {event.minTeamSize === 1 && event.maxTeamSize === 1
-                          ? "Individual Participation Only"
-                          : `${event.minTeamSize} to ${event.maxTeamSize} Members per Team`}
-                      </p>
-                    </div>
-                    <div className="p-4 rounded-lg bg-muted border border-border space-y-1">
-                      <span className="text-xs text-muted-foreground">Registration Deadline</span>
-                      <p className="text-sm font-semibold text-foreground">{deadlineFormatted}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Tab 2: Organizing Club */}
-            {activeTab === "club" && (
-              <Card className="p-6 sm:p-8 space-y-6">
-                <CardContent className="p-0 space-y-6">
-                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                    <Building2 className="w-5 h-5 text-muted-foreground" />
-                    Host Campus Club
-                  </h3>
-
-                  {club ? (
-                    <Link
-                      href={`/clubs/${club.slug}`}
-                      className="flex items-center gap-4 p-5 rounded-lg bg-muted border border-border hover:bg-accent transition-all group"
-                    >
-                      <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-border bg-card shrink-0 flex items-center justify-center">
-                        {club.logo ? (
-                          <Image src={club.logo} alt={club.name} fill className="object-cover" />
-                        ) : (
-                          <Building2 className="w-8 h-8 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="space-y-1 flex-1">
-                        <h4 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">
-                          {club.name}
-                        </h4>
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {club.description}
-                        </p>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
-                    </Link>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">No host club details available.</p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Tab 3: Resources & Contacts */}
-            {activeTab === "resources" && (
-              <Card className="p-6 sm:p-8 space-y-6">
-                <CardContent className="p-0 space-y-6">
-                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                    <ExternalLink className="w-5 h-5 text-muted-foreground" />
-                    Event Links & Attachments
-                  </h3>
-
-                  {links.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* links & contacts */}
+            {links.length || contacts.length ? (
+              <section className="grid gap-6 sm:grid-cols-2">
+                {links.length ? (
+                  <div className="space-y-3">
+                    <h3 className="display text-2xl">Resources</h3>
+                    <ul className="space-y-2">
                       {links.map((link) => (
-                        <a
-                          key={link.id}
-                          href={link.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center justify-between p-3.5 rounded-lg bg-muted border border-border hover:bg-accent transition-colors"
-                        >
-                          <div className="space-y-0.5">
-                            <span className="text-xs font-semibold text-foreground block">{link.title}</span>
-                            <span className="text-[11px] text-muted-foreground uppercase">{link.type}</span>
-                          </div>
-                          <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                        </a>
+                        <li key={link.id}>
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="brutal-sm flex items-center justify-between gap-3 rounded-xl bg-card px-4 py-3 text-sm font-bold transition-transform hover:-translate-y-0.5"
+                          >
+                            <span className="min-w-0">
+                              <span className="block truncate">{link.title}</span>
+                              <span className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                {link.type}
+                              </span>
+                            </span>
+                            <ExternalLink className="size-4 shrink-0" />
+                          </a>
+                        </li>
                       ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">No external links attached to this event.</p>
-                  )}
+                    </ul>
+                  </div>
+                ) : null}
 
-                  <Separator />
-
-                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 pt-2">
-                    <Mail className="w-5 h-5 text-muted-foreground" />
-                    Contact & Helpdesk
-                  </h3>
-
-                  {contacts.length > 0 ? (
-                    <div className="space-y-2">
+                {contacts.length ? (
+                  <div className="space-y-3">
+                    <h3 className="display text-2xl">Who to ask</h3>
+                    <ul className="space-y-2">
                       {contacts.map((contact) => (
-                        <div
+                        <li
                           key={contact.id}
-                          className="flex items-center justify-between p-3 rounded-lg bg-muted border border-border text-xs"
+                          className="brutal-sm flex items-center justify-between gap-3 rounded-xl bg-card px-4 py-3 text-sm"
                         >
-                          <span className="font-medium text-foreground">{contact.title} ({contact.type}):</span>
-                          <span className="text-muted-foreground font-mono">{contact.value}</span>
-                        </div>
+                          <span className="min-w-0">
+                            <span className="block truncate font-bold">
+                              {contact.title}
+                            </span>
+                            <span className="block truncate text-muted-foreground">
+                              {contact.value}
+                            </span>
+                          </span>
+                          <Mail className="size-4 shrink-0" />
+                        </li>
                       ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
+            {/* who's coming */}
+            {registrations.length ? (
+              <section className="space-y-4">
+                <h2 className="display text-3xl sm:text-4xl">
+                  Who&apos;s coming ({registrations.length})
+                </h2>
+                <div className="brutal flex flex-wrap gap-3 rounded-2xl bg-card p-5">
+                  {registrations.slice(0, 24).map((registration) => (
+                    <div
+                      key={registration.id}
+                      className="flex items-center gap-2 rounded-full border-2 border-ink bg-paper py-1 pl-1 pr-3"
+                    >
+                      <Avatar
+                        name={registration.teamName ?? registration.userName ?? "?"}
+                        size="sm"
+                        className="border-2"
+                      />
+                      <span className="text-xs font-bold">
+                        {registration.teamName ?? registration.userName}
+                      </span>
+                      {registration.mode === "TEAM" ? (
+                        <Users className="size-3.5" />
+                      ) : null}
                     </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">No direct contacts listed for this event.</p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                  ))}
+                  {registrations.length > 24 ? (
+                    <span className="self-center text-xs font-bold uppercase text-muted-foreground">
+                      +{registrations.length - 24} more
+                    </span>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
           </div>
 
-          {/* Right Column (4 cols): Sticky Info Card */}
-          <div className="lg:col-span-4 sticky top-20 space-y-6">
-            <Card className="p-6 space-y-6 shadow-sm">
-              <CardContent className="p-0 space-y-6">
-                <div>
-                  <Badge variant="default" className="text-[11px]">
-                    Event Status
-                  </Badge>
-                  <h3 className="text-xl font-bold text-foreground mt-2">Registration Info</h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Open for all campus students.
-                  </p>
-                </div>
+          {/* sticky registration rail */}
+          <div className="lg:col-span-4">
+            <div
+              id="register"
+              className="space-y-6 scroll-mt-24 lg:sticky lg:top-28"
+            >
+              <RegisterPanel
+                eventSlug={event.slug}
+                minTeamSize={event.minTeamSize}
+                maxTeamSize={event.maxTeamSize}
+                registrationOpen={state.registrationOpen}
+                closedReason={closedReason}
+                isSignedIn={Boolean(user)}
+                alreadyRegistered={alreadyRegistered}
+                currentUserId={user?.id ?? null}
+                students={students}
+              />
 
-                {/* Deadline alert */}
-                <div className="p-3.5 rounded-lg bg-muted border border-border space-y-1">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Clock className="w-4 h-4" />
-                    <span>Registration Deadline</span>
-                  </div>
-                  <p className="text-sm font-semibold text-foreground">{deadlineFormatted}</p>
-                </div>
-
-                {/* Time Summary */}
-                <div className="space-y-3 text-xs text-muted-foreground">
-                  <div className="flex items-start gap-3">
-                    <Calendar className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-semibold text-foreground block">Starts</span>
-                      <span>{startDateFormatted} at {startTimeFormatted}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <Clock className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-semibold text-foreground block">Ends</span>
-                      <span>{endTimeFormatted}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <Users className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-semibold text-foreground block">Team Format</span>
-                      <span>
-                        {event.minTeamSize === 1 && event.maxTeamSize === 1
-                          ? "Individual (Solo)"
-                          : `Teams of ${event.minTeamSize} to ${event.maxTeamSize} members`}
+              {club ? (
+                <div className="brutal rounded-2xl bg-card p-6">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    Hosted by
+                  </h3>
+                  <Link
+                    href={`/clubs/${club.slug}`}
+                    className="mt-3 flex items-center gap-3"
+                  >
+                    <Avatar name={club.name} image={club.logo} />
+                    <span>
+                      <span className="block font-bold">{club.name}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        View club profile
                       </span>
-                    </div>
-                  </div>
+                    </span>
+                  </Link>
                 </div>
-
-                {/* Registration Button */}
-                <Button variant="default" size="lg" className="w-full gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  <span>Register Now</span>
-                </Button>
-
-                {/* Contact Information */}
-                {contacts.length > 0 && (
-                  <div className="pt-4 border-t border-border space-y-2 text-xs">
-                    <span className="text-muted-foreground font-semibold block">Need Assistance?</span>
-                    {contacts.map((contact) => (
-                      <div key={contact.id} className="flex justify-between text-muted-foreground">
-                        <span>{contact.title}:</span>
-                        <span className="text-foreground font-medium">{contact.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              ) : null}
+            </div>
           </div>
         </div>
       </main>
 
-      <Footer />
-    </div>
+      {/* Phone action bar — the primary action stays in reach on a long page */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-ink bg-paper/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md lg:hidden">
+        {alreadyRegistered ? (
+          <Link href="/dashboard" className="block">
+            <Button size="lg" variant="secondary" className="w-full gap-2">
+              <CheckCircle2 className="size-4" />
+              You&apos;re registered — view pass
+            </Button>
+          </Link>
+        ) : !state.registrationOpen ? (
+          <p className="flex items-center justify-center gap-2 py-2 text-sm font-bold uppercase tracking-wide text-muted-foreground">
+            <Lock className="size-4" />
+            {state.status === "ENDED" ? "Event finished" : "Entries closed"}
+          </p>
+        ) : user ? (
+          <a href="#register" className="block">
+            <Button size="lg" className="w-full">
+              Grab your spot
+            </Button>
+          </a>
+        ) : (
+          <Link href={`/login?next=/events/${event.slug}`} className="block">
+            <Button size="lg" className="w-full">
+              Sign in to register
+            </Button>
+          </Link>
+        )}
+      </div>
+    </>
   );
 }
