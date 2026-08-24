@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { usePathname } from "next/navigation";
 import RouteLoader from "@/components/shared/route-loader";
 import { NavigationLoaderProvider } from "@/components/shared/route-loader-context";
 
-const MINIMUM_DISPLAY_MS = 750;
+const MINIMUM_DISPLAY_MS = 650;
 const SAFETY_TIMEOUT_MS = 5000;
 
 function humanizeSegment(segment: string) {
@@ -116,7 +122,7 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
     };
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (pathname === previousPathname.current) return;
 
     previousPathname.current = pathname;
