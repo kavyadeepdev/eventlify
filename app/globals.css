@@ -1422,18 +1422,19 @@
   }
 }
 
-/* Phones paint far fewer rows. Trimming symmetrically keeps the anchor word
-   in the middle of what's left. */
-@media (max-width: 900px) {
-  .ktg__row:nth-child(-n + 2),
-  .ktg__row:nth-child(n + 8) {
+/* Rows are sized off viewport height, so the default count fills the screen
+   everywhere. Short viewports (landscape phones) are the one case with rows to
+   spare — trim those symmetrically so the anchor word stays centred. */
+@media (max-height: 560px) {
+  .ktg__row:nth-child(-n + 3),
+  .ktg__row:nth-child(n + 11) {
     display: none;
   }
 }
 
-@media (max-width: 560px) {
-  .ktg__row:nth-child(-n + 3),
-  .ktg__row:nth-child(n + 7) {
+@media (max-height: 380px) {
+  .ktg__row:nth-child(-n + 4),
+  .ktg__row:nth-child(n + 10) {
     display: none;
   }
 }
@@ -1446,7 +1447,7 @@
     transform: none;
   }
   /* Without the wipe, the repeats would just be visual noise. */
-  .ktg__row:not(:nth-child(5)) {
+  .ktg__row:not(:nth-child(7)) {
     display: none;
   }
   .ktg__word-inner:not(.ktg__word-inner--anchor) {
