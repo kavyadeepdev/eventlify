@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { PostgresJSDialect } from "kysely-postgres-js";
 import postgres from "postgres";
+import { slugify } from "@/lib/format";
 
 const googleCliendId = process.env.GOOGLE_CLIENT_ID;
 const googleCliendSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -29,6 +30,27 @@ export const auth = betterAuth({
       generateId: "uuid",
     },
   },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          const baseName = user.name || user.email?.split("@")[0] || "user";
+          const baseSlug = slugify(baseName) || "user";
+          const randomSuffix = Math.random().toString(36).substring(2, 7);
+          const generatedSlug = `${baseSlug}-${randomSuffix}`;
+          return {
+            data: {
+              ...user,
+              slug:
+                typeof user.slug === "string" && user.slug.trim() !== ""
+                  ? user.slug
+                  : generatedSlug,
+            },
+          };
+        },
+      },
+    },
+  },
   user: {
     modelName: "users",
     fields: {
@@ -43,7 +65,9 @@ export const auth = betterAuth({
       },
       slug: {
         type: "string",
-        required: true,
+        required: false,
+        defaultValue: () =>
+          `user-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
       },
     },
   },
@@ -91,3 +115,4 @@ export const auth = betterAuth({
     },
   },
 });
+

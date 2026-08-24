@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
-import { fetchClubBySlug, fetchClubs } from "@/lib/api-client";
+import { getClubBySlug, getClubs } from "@/lib/db-queries";
 import { getSessionUser } from "@/lib/session";
 import EventForm from "@/components/events/event-form";
 import EmptyState from "@/components/shared/empty-state";
@@ -18,9 +18,9 @@ export default async function NewEventPage() {
 
   // A student can only publish under clubs they belong to. There's no
   // "my clubs" endpoint yet, so membership is resolved club by club.
-  const clubs = await fetchClubs();
+  const clubs = await getClubs();
   const details = await Promise.all(
-    clubs.map((club) => fetchClubBySlug(club.slug))
+    clubs.map((club) => getClubBySlug(club.slug))
   );
   const myClubs = clubs.filter((_, index) =>
     details[index]?.members.some((member) => member.userId === user.id)

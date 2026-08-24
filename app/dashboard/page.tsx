@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { CalendarCheck, Ticket } from "lucide-react";
-import { fetchUserBySlug, fetchUserHistory } from "@/lib/api-client";
+import { getUserBySlug, getUserHistory } from "@/lib/db-queries";
 import { getSessionUser } from "@/lib/session";
 import { formatDateTime, hasPassed } from "@/lib/format";
 import PassCard from "@/components/dashboard/pass-card";
@@ -27,8 +27,8 @@ export default async function DashboardPage() {
   if (!user) redirect("/login?next=/dashboard");
 
   const [history, profile] = await Promise.all([
-    fetchUserHistory(user.slug),
-    fetchUserBySlug(user.slug),
+    getUserHistory(user.slug),
+    getUserBySlug(user.slug),
   ]);
 
   const registrations = history?.registrations ?? [];

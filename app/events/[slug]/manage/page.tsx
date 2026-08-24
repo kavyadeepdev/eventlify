@@ -3,12 +3,12 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft, ClipboardList, ShieldAlert } from "lucide-react";
 import {
-  fetchClubBySlug,
-  fetchEventAttendance,
-  fetchEventBySlug,
-  fetchEventRegistrations,
-  fetchTeam,
-} from "@/lib/api-client";
+  getClubBySlug,
+  getEventAttendance,
+  getEventBySlug,
+  getEventRegistrations,
+  getTeam,
+} from "@/lib/db-queries";
 import { getSessionUser } from "@/lib/session";
 import { formatDateTime, getEventState } from "@/lib/format";
 import CheckInList, {
@@ -30,7 +30,7 @@ export default async function ManageEventPage({ params }: { params: Params }) {
   const { slug } = await params;
 
   const [data, user] = await Promise.all([
-    fetchEventBySlug(slug),
+    getEventBySlug(slug),
     getSessionUser(),
   ]);
 
@@ -40,36 +40,28 @@ export default async function ManageEventPage({ params }: { params: Params }) {
   const { event, club } = data;
 
   // Organiser tools are for the hosting club's members only.
-  const clubDetail = club ? await fetchClubBySlug(club.slug) : null;
+  const clubDetail = club ? await getClubBySlug(club.slug) : null;
   const isOrganiser = Boolean(
     clubDetail?.members.some((member) => member.userId === user.id)
   );
 
   if (!isOrganiser) {
     return (
-      <main className="mx-auto w-full max-w-2xl px-4 py-20 sm:px-6 lg:px-8">
-        <div className="brutal rounded-2xl bg-card p-8 text-center">
-          <ShieldAlert className="mx-auto size-10" />
-          <h1 className="display mt-4 text-3xl">Organisers only</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Only members of {club?.name ?? "the hosting club"} can manage this
-            event.
-          </p>
-          <Link
-            href={`/events/${slug}`}
-            className="mt-6 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest underline decoration-[3px] underline-offset-4"
-          >
-            <ArrowLeft className="size-4" />
-            Back to the event
-          </Link>
-        </div>
+      <main className="mx-auto max-w-7xl px-4 py-16 text-center sm:px-6 lg:px-8">
+        <EmptyState
+          icon={ShieldAlert}
+          title="Organisers only"
+          description="You need organiser access for this club to manage registrations and mark attendance."
+          actionLabel="Back to event"
+          actionHref={`/events/${slug}`}
+        />
       </main>
     );
   }
 
   const [registrations, attendances] = await Promise.all([
-    fetchEventRegistrations(slug),
-    fetchEventAttendance(slug),
+    getEventRegistrations(slug),
+    getEventAttendance(slug),
   ]);
 
   const attendedIds = new Set(attendances.map((entry) => entry.userId));
@@ -77,7 +69,7 @@ export default async function ManageEventPage({ params }: { params: Params }) {
   // Team registrations only carry a team id, so pull each roster.
   const teams = await Promise.all(
     registrations.map((registration) =>
-      registration.teamId ? fetchTeam(registration.teamId) : Promise.resolve(null)
+      registration.teamId ? getTeam(registration.teamId) : Promise.resolve(null)
     )
   );
 

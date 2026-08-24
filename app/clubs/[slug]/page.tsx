@@ -4,10 +4,10 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft, Building2, ExternalLink, Mail, Plus } from "lucide-react";
 import {
-  fetchClubBySlug,
-  fetchEventsByClubSlug,
-  fetchUsers,
-} from "@/lib/api-client";
+  getClubBySlug,
+  getEventsByClubSlug,
+  getUsers,
+} from "@/lib/db-queries";
 import { getSessionUser } from "@/lib/session";
 import { getEventState } from "@/lib/format";
 import EventCard from "@/components/events/event-card";
@@ -26,7 +26,7 @@ export async function generateMetadata({
   params: Params;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const data = await fetchClubBySlug(slug);
+  const data = await getClubBySlug(slug);
   if (!data?.club) return { title: "Club not found" };
 
   return {
@@ -39,8 +39,8 @@ export default async function ClubDetailPage({ params }: { params: Params }) {
   const { slug } = await params;
 
   const [data, events, user] = await Promise.all([
-    fetchClubBySlug(slug),
-    fetchEventsByClubSlug(slug),
+    getClubBySlug(slug),
+    getEventsByClubSlug(slug),
     getSessionUser(),
   ]);
 
@@ -55,7 +55,7 @@ export default async function ClubDetailPage({ params }: { params: Params }) {
       )
   );
 
-  const students = isAdmin ? await fetchUsers() : [];
+  const students = isAdmin ? await getUsers() : [];
 
   const upcoming = events.filter((event) => {
     const status = getEventState(event).status;
