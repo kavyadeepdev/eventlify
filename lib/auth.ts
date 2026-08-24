@@ -3,6 +3,8 @@ import { PostgresJSDialect } from "kysely-postgres-js";
 import postgres from "postgres";
 import { slugify } from "@/lib/format";
 
+import { slugify } from "./format";
+
 const googleCliendId = process.env.GOOGLE_CLIENT_ID;
 const googleCliendSecret = process.env.GOOGLE_CLIENT_SECRET;
 
@@ -24,6 +26,35 @@ export const auth = betterAuth({
     }),
     type: "postgres",
     casing: "snake",
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          const nameSlug = slugify(user.name || "");
+          const emailHandle = (user.email || "").split("@")[0].replace(/\./g, "-");
+          const emailSlug = slugify(emailHandle);
+
+          let slug = nameSlug || emailSlug;
+
+          if (nameSlug) {
+            const existing = await authSql`
+              SELECT id FROM users WHERE slug = ${nameSlug} LIMIT 1
+            `;
+            if (existing.length > 0) {
+              slug = emailSlug;
+            }
+          }
+
+          return {
+            data: {
+              ...user,
+              slug,
+            },
+          };
+        },
+      },
+    },
   },
   advanced: {
     database: {
