@@ -38,7 +38,13 @@ export default function RootLayout({
         <NavigationLoader>
           <div className="flex min-h-screen flex-col">
             <Header />
-            <div className="flex-1">{children}</div>
+            {/* Reserve a viewport of space for the page. While a route is
+                still streaming, `children` is empty and this slot would
+                collapse to 0px, letting the footer ride up under the header —
+                which read as a flash of the footer before the page appeared.
+                The header is 76px; `svh` keeps it stable while mobile browser
+                chrome shows and hides. */}
+            <div className="min-h-[calc(100svh-76px)] flex-1">{children}</div>
             <Footer />
           </div>
         </NavigationLoader>
