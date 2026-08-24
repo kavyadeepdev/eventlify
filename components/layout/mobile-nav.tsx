@@ -38,6 +38,7 @@ export default function MobileNav({ isSignedIn }: MobileNavProps) {
               <li key={link.href}>
                 <Link
                   href={link.href}
+                  scroll
                   onClick={() => setOpen(false)}
                   className="display block min-h-12 rounded-xl px-4 py-3 text-2xl active:bg-limepop"
                 >

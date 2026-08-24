@@ -35,6 +35,7 @@ export default function NavLinks({ isSignedIn }: { isSignedIn: boolean }) {
           <Link
             key={link.href}
             href={link.href}
+            scroll
             className={cn(
               "rounded-full border px-4 py-2 text-[11px] font-black uppercase tracking-[0.08em] transition-all",
               isActive
