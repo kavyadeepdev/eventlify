@@ -112,6 +112,7 @@ export const auth = betterAuth({
     google: {
       clientId: googleCliendId as string,
       clientSecret: googleCliendSecret as string,
+      hd: "bmsce.ac.in",
     },
   },
 });
