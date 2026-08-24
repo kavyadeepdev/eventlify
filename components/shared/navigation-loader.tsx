@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useTransition,
   type ReactNode,
 } from "react";
 import { flushSync } from "react-dom";
@@ -55,6 +56,8 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
   const [visible, setVisible] = useState(false);
   const startedAt = useRef(0);
   const previousPathname = useRef(pathname);
+  const [isNavigating, startNavigation] = useTransition();
+  const pendingPathname = useRef<string | null>(null);
   const forceTopUntilHidden = useRef(false);
   const primedNavigationHref = useRef<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -63,6 +66,13 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
 
   const hideLoader = useCallback(() => {
     const keepAtTop = forceTopUntilHidden.current;
+
+    // The safety net has done its job (or wasn't needed) — don't let it fire
+    // a second time and re-run the scroll reset under the destination.
+    if (safetyTimer.current) {
+      clearTimeout(safetyTimer.current);
+      safetyTimer.current = null;
+    }
 
     if (keepAtTop) scrollToTop();
 
@@ -187,17 +197,26 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
         if (forceTopUntilHidden.current) scrollToTop();
 
         const href = `${url.pathname}${url.search}${url.hash}`;
+        pendingPathname.current = url.pathname;
 
-        // `router.push` keeps its default scroll handling on purpose. It is
-        // the only reset that runs *after* the destination segment commits,
-        // which matters because these routes stream: every manual reset here
-        // fires while the page is still the outgoing document or a short
-        // loading skeleton, so on its own it leaves a slow route sitting at
-        // the previous scroll offset.
+        // Minimum display time runs from the navigation itself, not from
+        // pointerdown — otherwise holding the mouse down satisfies it before
+        // the destination has done any work.
+        startedAt.current = performance.now();
+
+        // `router.push` keeps its default scroll handling on purpose: it is
+        // the only reset that runs *after* the destination segment commits.
+        //
+        // Wrapped in a transition so `isNavigating` stays true until the new
+        // route has actually rendered its content. Hiding the overlay on a
+        // timer instead uncovered a half-built page for the ~900ms between
+        // the URL changing and the streamed content committing.
         //
         // Scheduled with a timer rather than requestAnimationFrame — rAF is
         // paused in background tabs, which silently dropped the navigation.
-        navigationTimer.current = setTimeout(() => router.push(href), 0);
+        navigationTimer.current = setTimeout(() => {
+          startNavigation(() => router.push(href));
+        }, 0);
       } else {
         hideTimer.current = setTimeout(hideLoader, MINIMUM_DISPLAY_MS);
       }
@@ -226,12 +245,31 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
       // its own hero while same-page filters and hash links stay untouched.
       scrollToTop();
     }
+  }, [pathname]);
 
-    const elapsed = performance.now() - startedAt.current;
-    const remaining = Math.max(0, MINIMUM_DISPLAY_MS - elapsed);
+  // Uncover only once the destination is genuinely ready: the URL has caught
+  // up, React has finished the navigation transition (so the streamed content
+  // is committed, not just the loading stub), and the loader has been up long
+  // enough not to strobe.
+  useEffect(() => {
+    if (!visible) return;
+    if (isNavigating) return;
 
-    hideTimer.current = setTimeout(hideLoader, remaining);
-  }, [hideLoader, pathname]);
+    const target = pendingPathname.current;
+    if (target && pathname !== target) return;
+
+    const remaining = Math.max(
+      0,
+      MINIMUM_DISPLAY_MS - (performance.now() - startedAt.current)
+    );
+
+    const timer = setTimeout(() => {
+      pendingPathname.current = null;
+      hideLoader();
+    }, remaining);
+
+    return () => clearTimeout(timer);
+  }, [visible, isNavigating, pathname, hideLoader]);
 
   return (
     <NavigationLoaderProvider value={visible}>
