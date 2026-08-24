@@ -16,12 +16,12 @@ import {
   Users,
 } from "lucide-react";
 import {
-  fetchClubBySlug,
-  fetchEventBySlug,
-  fetchEventRegistrations,
-  fetchUserHistory,
-  fetchUsers,
-} from "@/lib/api-client";
+  getClubBySlug,
+  getEventBySlug,
+  getEventRegistrations,
+  getUserHistory,
+  getUsers,
+} from "@/lib/db-queries";
 import { getSessionUser } from "@/lib/session";
 import {
   formatDateLong,
@@ -50,7 +50,7 @@ export async function generateMetadata({
   params: Params;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const data = await fetchEventBySlug(slug);
+  const data = await getEventBySlug(slug);
   if (!data?.event) return { title: "Event not found" };
 
   return {
@@ -63,7 +63,7 @@ export default async function EventDetailPage({ params }: { params: Params }) {
   const { slug } = await params;
 
   const [data, user] = await Promise.all([
-    fetchEventBySlug(slug),
+    getEventBySlug(slug),
     getSessionUser(),
   ]);
 
@@ -74,12 +74,12 @@ export default async function EventDetailPage({ params }: { params: Params }) {
 
   // Only fetch what each viewer actually needs.
   const [registrations, students, history, clubDetail] = await Promise.all([
-    fetchEventRegistrations(slug),
+    getEventRegistrations(slug),
     state.registrationOpen && event.maxTeamSize > 1
-      ? fetchUsers()
+      ? getUsers()
       : Promise.resolve([]),
-    user ? fetchUserHistory(user.slug) : Promise.resolve(null),
-    user && club ? fetchClubBySlug(club.slug) : Promise.resolve(null),
+    user ? getUserHistory(user.slug) : Promise.resolve(null),
+    user && club ? getClubBySlug(club.slug) : Promise.resolve(null),
   ]);
 
   const alreadyRegistered = Boolean(
