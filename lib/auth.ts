@@ -1,7 +1,6 @@
 import { betterAuth } from "better-auth";
 import { PostgresJSDialect } from "kysely-postgres-js";
 import postgres from "postgres";
-import { slugify } from "@/lib/format";
 
 import { slugify } from "./format";
 
@@ -59,27 +58,6 @@ export const auth = betterAuth({
   advanced: {
     database: {
       generateId: "uuid",
-    },
-  },
-  databaseHooks: {
-    user: {
-      create: {
-        before: async (user) => {
-          const baseName = user.name || user.email?.split("@")[0] || "user";
-          const baseSlug = slugify(baseName) || "user";
-          const randomSuffix = Math.random().toString(36).substring(2, 7);
-          const generatedSlug = `${baseSlug}-${randomSuffix}`;
-          return {
-            data: {
-              ...user,
-              slug:
-                typeof user.slug === "string" && user.slug.trim() !== ""
-                  ? user.slug
-                  : generatedSlug,
-            },
-          };
-        },
-      },
     },
   },
   user: {
@@ -147,4 +125,3 @@ export const auth = betterAuth({
     },
   },
 });
-
