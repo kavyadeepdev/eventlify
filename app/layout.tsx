@@ -35,13 +35,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${anton.variable} ${spaceGrotesk.variable}`}>
       <body className="antialiased">
-        <div className="flex min-h-screen flex-col">
-          <Header />
-          <NavigationLoader>
+        <NavigationLoader>
+          <div className="flex min-h-screen flex-col">
+            <Header />
             <div className="flex-1">{children}</div>
-          </NavigationLoader>
-          <Footer />
-        </div>
+            <Footer />
+          </div>
+        </NavigationLoader>
       </body>
     </html>
   );

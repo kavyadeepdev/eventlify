@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { flushSync } from "react-dom";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import RouteLoader from "@/components/shared/route-loader";
 import { NavigationLoaderProvider } from "@/components/shared/route-loader-context";
 
@@ -45,6 +45,7 @@ function getLoadingLabel(url: URL) {
 
 export default function NavigationLoader({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [label, setLabel] = useState("BMSCE");
   const [visible, setVisible] = useState(false);
   const startedAt = useRef(0);
@@ -166,7 +167,17 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
 
       primedNavigationHref.current = null;
 
-      if (url.pathname === window.location.pathname) {
+      if (shouldResetScroll) {
+        // Stop Next's Link handler from swapping the route in the same frame.
+        // Giving the opaque loader one paint first prevents any part of the
+        // outgoing, scrolled page from flashing during the transition.
+        event.preventDefault();
+        forceTopUntilHidden.current = true;
+        window.scrollTo(0, 0);
+
+        const href = `${url.pathname}${url.search}${url.hash}`;
+        requestAnimationFrame(() => router.push(href, { scroll: false }));
+      } else {
         hideTimer.current = setTimeout(hideLoader, MINIMUM_DISPLAY_MS);
       }
     };
@@ -180,7 +191,7 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
       document.removeEventListener("click", handleClick, true);
       clearTimers();
     };
-  }, [hideLoader]);
+  }, [hideLoader, router]);
 
   useLayoutEffect(() => {
     if (pathname === previousPathname.current) return;
