@@ -13,8 +13,7 @@ export default function RouteLoader({ label, primary = false }: RouteLoaderProps
   const loadingText = `LOADING ${label}`.toUpperCase();
 
   // Route-level loading boundaries can mount underneath the global navigation
-  // loader. Rendering only the primary grid avoids animating two expensive
-  // clip-path fields at the same time.
+  // loader. Rendering only the primary grid avoids animating two grids at once.
   if (navigationLoaderActive && !primary) return null;
 
   return (
@@ -33,24 +32,12 @@ export default function RouteLoader({ label, primary = false }: RouteLoaderProps
         rowGap={14}
         wordGap={24}
         horizontalShiftPx={110}
-        zoomScalePct={114}
-        expandDurationSec={0.5}
-        holdDurationSec={0.35}
-        style={{
-          position: "absolute",
-          left: "-10vw",
-          top: "-6vh",
-          width: "120vw",
-          height: "112vh",
-          transform: "translateZ(0) rotate(-10deg)",
-          transformOrigin: "center",
-          contain: "layout paint style",
-          textRendering: "optimizeSpeed",
-        }}
+        zoomScalePct={112}
         font={{
           fontFamily: "var(--font-anton), Arial Black, sans-serif",
           fontWeight: 400,
-          fontSize: "clamp(3.2rem, 6vw, 5.5rem)",
+          // Scales down hard on phones so three repeats still read as a grid.
+          fontSize: "clamp(2rem, 9vw, 5.5rem)",
           lineHeight: "0.86em",
           letterSpacing: "-0.02em",
           textAlign: "center",

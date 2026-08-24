@@ -16,6 +16,11 @@ import { NavigationLoaderProvider } from "@/components/shared/route-loader-conte
 const MINIMUM_DISPLAY_MS = 650;
 const SAFETY_TIMEOUT_MS = 5000;
 
+/** Jump to the top with no smooth-scroll animation to interrupt. */
+function scrollToTop() {
+  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+}
+
 function humanizeSegment(segment: string) {
   return decodeURIComponent(segment)
     .replace(/[-_]+/g, " ")
@@ -54,20 +59,18 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
   const primedNavigationHref = useRef<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const safetyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hideLoader = useCallback(() => {
     const keepAtTop = forceTopUntilHidden.current;
 
-    if (keepAtTop) window.scrollTo(0, 0);
+    if (keepAtTop) scrollToTop();
 
     // Remove the opaque overlay synchronously only after the destination is
     // already at the top, so no intermediate scrolled frame can be painted.
     flushSync(() => setVisible(false));
 
-    if (keepAtTop) {
-      window.scrollTo(0, 0);
-      requestAnimationFrame(() => window.scrollTo(0, 0));
-    }
+    if (keepAtTop) scrollToTop();
 
     forceTopUntilHidden.current = false;
   }, []);
@@ -76,6 +79,11 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
     const clearTimers = () => {
       if (hideTimer.current) clearTimeout(hideTimer.current);
       if (safetyTimer.current) clearTimeout(safetyTimer.current);
+    };
+
+    const cancelPendingNavigation = () => {
+      if (navigationTimer.current) clearTimeout(navigationTimer.current);
+      navigationTimer.current = null;
     };
 
     const showLoader = (nextLabel: string, shouldResetScroll: boolean) => {
@@ -91,7 +99,7 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
         setVisible(true);
       });
 
-      if (shouldResetScroll) window.scrollTo(0, 0);
+      if (shouldResetScroll) scrollToTop();
 
       safetyTimer.current = setTimeout(hideLoader, SAFETY_TIMEOUT_MS);
     };
@@ -159,7 +167,7 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
 
       if (primedNavigationHref.current === url.href) {
         forceTopUntilHidden.current = shouldResetScroll;
-        if (shouldResetScroll) window.scrollTo(0, 0);
+        if (shouldResetScroll) scrollToTop();
       } else {
         // Keyboard activation has no pointerdown, so mount synchronously here.
         showLoader(getLoadingLabel(url), shouldResetScroll);
@@ -172,11 +180,24 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
         // Giving the opaque loader one paint first prevents any part of the
         // outgoing, scrolled page from flashing during the transition.
         event.preventDefault();
-        forceTopUntilHidden.current = true;
-        window.scrollTo(0, 0);
+
+        // A hash target owns its own scroll position; everything else opens
+        // at the top.
+        forceTopUntilHidden.current = !url.hash;
+        if (forceTopUntilHidden.current) scrollToTop();
 
         const href = `${url.pathname}${url.search}${url.hash}`;
-        requestAnimationFrame(() => router.push(href, { scroll: false }));
+
+        // `router.push` keeps its default scroll handling on purpose. It is
+        // the only reset that runs *after* the destination segment commits,
+        // which matters because these routes stream: every manual reset here
+        // fires while the page is still the outgoing document or a short
+        // loading skeleton, so on its own it leaves a slow route sitting at
+        // the previous scroll offset.
+        //
+        // Scheduled with a timer rather than requestAnimationFrame — rAF is
+        // paused in background tabs, which silently dropped the navigation.
+        navigationTimer.current = setTimeout(() => router.push(href), 0);
       } else {
         hideTimer.current = setTimeout(hideLoader, MINIMUM_DISPLAY_MS);
       }
@@ -190,6 +211,7 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
       document.removeEventListener("pointercancel", handlePointerCancel, true);
       document.removeEventListener("click", handleClick, true);
       clearTimers();
+      cancelPendingNavigation();
     };
   }, [hideLoader, router]);
 
@@ -202,7 +224,7 @@ export default function NavigationLoader({ children }: { children: ReactNode }) 
       // Shared App Router layouts can retain the outgoing page's scroll
       // position. Reset underneath the loader so every destination opens at
       // its own hero while same-page filters and hash links stay untouched.
-      window.scrollTo(0, 0);
+      scrollToTop();
     }
 
     const elapsed = performance.now() - startedAt.current;

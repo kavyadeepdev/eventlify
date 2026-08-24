@@ -1326,3 +1326,130 @@
   .event-card:hover .event-card__title { color: inherit; }
   .marquee:hover .marquee__track { animation-play-state: running; }
 }
+
+/* --------------------------------------------------------------------------
+   Kinetic loading grid
+   Transform-only so the compositor can run it without repainting the very
+   large text every frame. No JS: it animates from server-rendered markup, so
+   a cold load never waits for hydration to start moving.
+   -------------------------------------------------------------------------- */
+
+.ktg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--ktg-bg, #111116);
+  color: var(--ktg-color, #d7ff38);
+  /* Isolate the loader's paint work from the page underneath. */
+  contain: strict;
+  text-rendering: optimizeSpeed;
+}
+
+.ktg__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ktg-row-gap, 14px);
+  will-change: transform;
+  animation: ktg-zoom var(--ktg-cycle, 3.2s) ease-in-out infinite;
+}
+
+.ktg__row {
+  display: flex;
+  gap: var(--ktg-word-gap, 24px);
+  white-space: nowrap;
+  transform: translate3d(var(--drift-home, 0), 0, 0);
+  animation: ktg-drift var(--ktg-cycle, 3.2s) ease-in-out infinite;
+  animation-delay: var(--row-delay, 0s);
+}
+
+.ktg__word {
+  display: inline-block;
+  overflow: hidden;
+  /* Room for glyph overhang so the mask doesn't shave letter edges. */
+  padding: 0 0.06em;
+  margin: 0 -0.06em;
+}
+
+.ktg__word-inner {
+  display: inline-block;
+  animation: ktg-wipe var(--ktg-cycle, 3.2s) ease-in-out infinite;
+  animation-delay: var(--word-delay, 0s);
+}
+
+/* The one word that survives the wipe. */
+.ktg__word-inner--anchor {
+  animation: none;
+}
+
+@keyframes ktg-zoom {
+  0%,
+  100% {
+    transform: rotate(-10deg) scale(1);
+  }
+  38% {
+    transform: rotate(-10deg) scale(var(--ktg-zoom, 1.12));
+  }
+  64% {
+    transform: rotate(-10deg) scale(1);
+  }
+}
+
+@keyframes ktg-drift {
+  0%,
+  100% {
+    transform: translate3d(var(--drift-home, 0), 0, 0);
+  }
+  38% {
+    transform: translate3d(var(--drift-full, 0), 0, 0);
+  }
+}
+
+@keyframes ktg-wipe {
+  0%,
+  26% {
+    transform: translate3d(0, 0, 0);
+  }
+  48%,
+  72% {
+    transform: translate3d(var(--wipe-to, 110%), 0, 0);
+  }
+  94%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Phones paint far fewer rows. Trimming symmetrically keeps the anchor word
+   in the middle of what's left. */
+@media (max-width: 900px) {
+  .ktg__row:nth-child(-n + 2),
+  .ktg__row:nth-child(n + 8) {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .ktg__row:nth-child(-n + 3),
+  .ktg__row:nth-child(n + 7) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ktg__stage,
+  .ktg__row,
+  .ktg__word-inner {
+    animation: none;
+    transform: none;
+  }
+  /* Without the wipe, the repeats would just be visual noise. */
+  .ktg__row:not(:nth-child(5)) {
+    display: none;
+  }
+  .ktg__word-inner:not(.ktg__word-inner--anchor) {
+    visibility: hidden;
+  }
+}
