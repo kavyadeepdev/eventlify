@@ -271,3 +271,22 @@ export async function getTeam(
     return null;
   }
 }
+
+export async function updateUserProfile(
+  userId: string,
+  data: { name: string; usn: string | null }
+): Promise<boolean> {
+  try {
+    await sql`
+      UPDATE users SET
+        name = ${data.name},
+        usn = ${data.usn},
+        updated_at = NOW()
+      WHERE id = ${userId}
+    `;
+    return true;
+  } catch (error) {
+    console.error("updateUserProfile error:", error);
+    return false;
+  }
+}
