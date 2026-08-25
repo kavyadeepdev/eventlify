@@ -82,9 +82,9 @@ export default async function EventDetailPage({ params }: { params: Params }) {
     user && club ? getClubBySlug(club.slug) : Promise.resolve(null),
   ]);
 
-  const alreadyRegistered = Boolean(
-    history?.registrations.some((entry) => entry.eventId === event.id)
-  );
+  const matchingReg = history?.registrations.find((entry) => entry.eventId === event.id);
+  const alreadyRegistered = Boolean(matchingReg);
+  const registrationStatus = matchingReg?.status ?? null;
 
   const canManage = Boolean(
     user && clubDetail?.members.some((member) => member.userId === user.id)
@@ -350,8 +350,13 @@ export default async function EventDetailPage({ params }: { params: Params }) {
                 closedReason={closedReason}
                 isSignedIn={Boolean(user)}
                 alreadyRegistered={alreadyRegistered}
+                registrationStatus={registrationStatus}
                 currentUserId={user?.id ?? null}
                 students={students}
+                isPaid={event.isPaid}
+                feeAmount={event.feeAmount}
+                upiId={event.upiId}
+                upiQrUrl={event.upiQrUrl}
               />
 
               {club ? (

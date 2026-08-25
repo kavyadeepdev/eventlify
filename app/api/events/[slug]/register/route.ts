@@ -2,18 +2,22 @@ import sql from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-const registerSchema = z.object({
-  mode: z.enum(["SOLO", "TEAM"]),
-  userId: z.string().uuid().optional(),
-  teamId: z.string().uuid().optional(),
-}).refine(
-  (data) =>
-    (data.mode === "SOLO" && Boolean(data.userId) && !data.teamId) ||
-    (data.mode === "TEAM" && Boolean(data.teamId) && !data.userId),
-  {
-    message: "SOLO mode requires userId, TEAM mode requires teamId",
-  }
-);
+const registerSchema = z
+  .object({
+    mode: z.enum(["SOLO", "TEAM"]),
+    userId: z.string().uuid().optional(),
+    teamId: z.string().uuid().optional(),
+    paymentProofUrl: z.string().nullable().optional(),
+    transactionId: z.string().nullable().optional(),
+  })
+  .refine(
+    (data) =>
+      (data.mode === "SOLO" && Boolean(data.userId) && !data.teamId) ||
+      (data.mode === "TEAM" && Boolean(data.teamId) && !data.userId),
+    {
+      message: "SOLO mode requires userId, TEAM mode requires teamId",
+    }
+  );
 
 export async function GET(
   _req: NextRequest,
@@ -31,7 +35,7 @@ export async function GET(
     }
 
     const registrations = await sql`
-      SELECT r.id, r.mode, r.created_at, r.user_id, r.team_id,
+      SELECT r.id, r.mode, r.created_at, r.user_id, r.team_id, r.status, r.payment_proof_url, r.transaction_id, r.rejection_reason,
              u.name as user_name, u.email as user_email,
              t.name as team_name
       FROM registrations r
@@ -78,10 +82,10 @@ export async function POST(
     );
   }
 
-  const { mode, userId, teamId } = validation.data;
+  const { mode, userId, teamId, paymentProofUrl, transactionId } = validation.data;
 
   try {
-    const [event] = await sql`SELECT id, registration_deadline FROM events WHERE slug = ${slug}`;
+    const [event] = await sql`SELECT id, registration_deadline, is_paid, fee_amount FROM events WHERE slug = ${slug}`;
     if (!event) {
       return NextResponse.json(
         { error: `Event with slug '${slug}' not found` },
@@ -90,24 +94,32 @@ export async function POST(
     }
 
     // Check deadline
-    if (new Date() > new Date(event.registrationDeadline)) {
+    if (new Date() > new Date(event.registration_deadline)) {
       return NextResponse.json(
         { error: "Registration deadline has passed for this event." },
         { status: 400 }
       );
     }
 
+    const regStatus = event.is_paid ? "PENDING_VERIFICATION" : "CONFIRMED";
+
     const [registration] = await sql`
       INSERT INTO registrations (
         event_id,
         user_id,
         team_id,
-        mode
+        mode,
+        status,
+        payment_proof_url,
+        transaction_id
       ) VALUES (
         ${event.id},
         ${userId ?? null},
         ${teamId ?? null},
-        ${mode}
+        ${mode},
+        ${regStatus},
+        ${paymentProofUrl ?? null},
+        ${transactionId ?? null}
       )
       RETURNING *
     `;

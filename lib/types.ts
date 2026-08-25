@@ -16,6 +16,10 @@ export interface EventApiData {
   upiQrUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  isPaid?: boolean;
+  feeAmount?: number;
+  upiId?: string | null;
+  upiQrUrl?: string | null;
 }
 
 export interface ClubApiData {
