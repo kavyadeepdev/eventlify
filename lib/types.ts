@@ -12,6 +12,10 @@ export interface EventApiData {
   slug: string;
   createdAt?: string;
   updatedAt?: string;
+  isPaid?: boolean;
+  feeAmount?: number;
+  upiId?: string | null;
+  upiQrUrl?: string | null;
 }
 
 export interface ClubApiData {
@@ -131,6 +135,10 @@ export interface HistoryRegistrationApiData {
   art: string | null;
   teamId: string | null;
   teamName: string | null;
+  status?: string;
+  paymentProofUrl?: string | null;
+  transactionId?: string | null;
+  rejectionReason?: string | null;
 }
 
 export interface HistoryAttendanceApiData {
