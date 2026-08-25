@@ -16,6 +16,10 @@ import {
   TeamDetailApiResponse,
   TeamApiData,
   TeamMemberApiData,
+  ClubApplicationApiData,
+  ClubRoleApiData,
+  ClubApiKeyApiData,
+  AdminStatsApiResponse,
 } from "./types";
 
 export async function getUsers(search?: string): Promise<UserApiData[]> {
@@ -23,7 +27,7 @@ export async function getUsers(search?: string): Promise<UserApiData[]> {
     let users;
     if (search) {
       users = await sql`
-        SELECT id, name, email, email_verified, image, usn, slug, created_at, updated_at
+        SELECT id, name, email, email_verified, image, usn, slug, system_role, created_at, updated_at
         FROM users 
         WHERE name ILIKE ${"%" + search + "%"} 
            OR email ILIKE ${"%" + search + "%"} 
@@ -32,7 +36,7 @@ export async function getUsers(search?: string): Promise<UserApiData[]> {
       `;
     } else {
       users = await sql`
-        SELECT id, name, email, email_verified, image, usn, slug, created_at, updated_at
+        SELECT id, name, email, email_verified, image, usn, slug, system_role, created_at, updated_at
         FROM users 
         ORDER BY name ASC
       `;
@@ -47,7 +51,7 @@ export async function getUsers(search?: string): Promise<UserApiData[]> {
 export async function getUserBySlug(slug: string): Promise<UserApiData | null> {
   try {
     const [user] = await sql`
-      SELECT id, name, email, email_verified, image, usn, slug, created_at, updated_at
+      SELECT id, name, email, email_verified, image, usn, slug, system_role, created_at, updated_at
       FROM users 
       WHERE slug = ${slug}
     `;
@@ -62,11 +66,11 @@ export async function getUserHistory(
   slug: string
 ): Promise<UserHistoryApiResponse | null> {
   try {
-    const [user] = await sql`SELECT id, name, slug FROM users WHERE slug = ${slug}`;
+    const [user] = await sql`SELECT id, name, slug, usn, image FROM users WHERE slug = ${slug}`;
     if (!user) return null;
 
     const registrations = await sql`
-      SELECT r.id as registration_id, r.mode, r.created_at as registered_at,
+      SELECT r.id as registration_id, r.mode, r.created_at as registered_at, r.status, r.payment_proof_url, r.transaction_id, r.rejection_reason,
              e.id as event_id, e.name as event_name, e.slug as event_slug, e.starts_at, e.ends_at, e.art,
              t.id as team_id, t.name as team_name
       FROM registrations r
@@ -87,7 +91,7 @@ export async function getUserHistory(
     `;
 
     return {
-      user: user as unknown as Pick<UserApiData, "id" | "name" | "slug">,
+      user: user as unknown as Pick<UserApiData, "id" | "name" | "slug" | "usn" | "image">,
       registrations: registrations as unknown as HistoryRegistrationApiData[],
       attendances: attendances as unknown as HistoryAttendanceApiData[],
     };
@@ -105,7 +109,7 @@ export async function getEventBySlug(
     if (!event) return null;
 
     const [club] = await sql`
-      SELECT id, name, description, logo, slug FROM clubs WHERE id = ${event.clubId}
+      SELECT id, name, description, logo, slug, status FROM clubs WHERE id = ${event.clubId}
     `;
 
     const contacts = await sql`
@@ -133,7 +137,7 @@ export async function getClubs(search?: string): Promise<ClubApiData[]> {
     let clubs;
     if (search) {
       clubs = await sql`
-        SELECT id, name, description, logo, slug, created_at, updated_at
+        SELECT id, name, description, logo, slug, status, created_at, updated_at
         FROM clubs 
         WHERE name ILIKE ${"%" + search + "%"} 
            OR description ILIKE ${"%" + search + "%"}
@@ -141,7 +145,7 @@ export async function getClubs(search?: string): Promise<ClubApiData[]> {
       `;
     } else {
       clubs = await sql`
-        SELECT id, name, description, logo, slug, created_at, updated_at
+        SELECT id, name, description, logo, slug, status, created_at, updated_at
         FROM clubs 
         ORDER BY name ASC
       `;
@@ -158,7 +162,7 @@ export async function getClubBySlug(
 ): Promise<ClubDetailApiResponse | null> {
   try {
     const [club] = await sql`
-      SELECT id, name, description, logo, slug, created_at, updated_at FROM clubs WHERE slug = ${slug}
+      SELECT id, name, description, logo, slug, status, created_at, updated_at FROM clubs WHERE slug = ${slug}
     `;
     if (!club) return null;
 
@@ -177,11 +181,19 @@ export async function getClubBySlug(
       WHERE cm.club_id = ${club.id}
     `;
 
+    const roles = await sql`
+      SELECT id, club_id, name, color, rank, permissions, created_at, updated_at
+      FROM club_roles
+      WHERE club_id = ${club.id}
+      ORDER BY rank ASC
+    `;
+
     return {
       club: club as unknown as ClubApiData,
       contacts: contacts as unknown as ContactApiData[],
       links: links as unknown as LinkApiData[],
       members: members as unknown as ClubMemberApiData[],
+      roles: roles as unknown as ClubRoleApiData[],
     };
   } catch (error) {
     console.error("getClubBySlug error:", error);
@@ -210,7 +222,7 @@ export async function getEventRegistrations(
     const [event] = await sql`SELECT id FROM events WHERE slug = ${slug}`;
     if (!event) return [];
     const registrations = await sql`
-      SELECT r.id, r.mode, r.created_at,
+      SELECT r.id, r.mode, r.created_at, r.status, r.payment_proof_url, r.transaction_id, r.rejection_reason,
              u.id as user_id, u.name as user_name, u.email as user_email,
              t.id as team_id, t.name as team_name
       FROM registrations r
@@ -274,19 +286,150 @@ export async function getTeam(
 
 export async function updateUserProfile(
   userId: string,
-  data: { name: string; usn: string | null }
+  data: { name: string; usn: string | null; image?: string | null }
 ): Promise<boolean> {
   try {
-    await sql`
-      UPDATE users SET
-        name = ${data.name},
-        usn = ${data.usn},
-        updated_at = NOW()
-      WHERE id = ${userId}
-    `;
+    if (data.image !== undefined) {
+      await sql`
+        UPDATE users SET
+          name = ${data.name},
+          usn = ${data.usn},
+          image = ${data.image},
+          updated_at = NOW()
+        WHERE id = ${userId}
+      `;
+    } else {
+      await sql`
+        UPDATE users SET
+          name = ${data.name},
+          usn = ${data.usn},
+          updated_at = NOW()
+        WHERE id = ${userId}
+      `;
+    }
     return true;
   } catch (error) {
     console.error("updateUserProfile error:", error);
+    return false;
+  }
+}
+
+/* --------------------------- Onboarding Applications -------------------------- */
+
+export async function getClubApplications(status?: string): Promise<ClubApplicationApiData[]> {
+  try {
+    let rows;
+    if (status) {
+      rows = await sql`
+        SELECT ca.*, u.name as applicant_name, u.email as applicant_email
+        FROM club_applications ca
+        JOIN users u ON ca.applicant_id = u.id
+        WHERE ca.status = ${status}
+        ORDER BY ca.created_at DESC
+      `;
+    } else {
+      rows = await sql`
+        SELECT ca.*, u.name as applicant_name, u.email as applicant_email
+        FROM club_applications ca
+        JOIN users u ON ca.applicant_id = u.id
+        ORDER BY ca.created_at DESC
+      `;
+    }
+    return (rows as unknown as ClubApplicationApiData[]) ?? [];
+  } catch (error) {
+    console.error("getClubApplications error:", error);
+    return [];
+  }
+}
+
+export async function getClubApplicationById(id: string): Promise<ClubApplicationApiData | null> {
+  try {
+    const [app] = await sql`
+      SELECT ca.*, u.name as applicant_name, u.email as applicant_email
+      FROM club_applications ca
+      JOIN users u ON ca.applicant_id = u.id
+      WHERE ca.id = ${id}
+    `;
+    return (app as unknown as ClubApplicationApiData) ?? null;
+  } catch (error) {
+    console.error("getClubApplicationById error:", error);
+    return null;
+  }
+}
+
+/* ------------------------------- Admin Stats -------------------------------- */
+
+export async function getAdminStats(): Promise<AdminStatsApiResponse> {
+  try {
+    const [{ count: userCount }] = await sql`SELECT count(*)::int FROM users`;
+    const [{ count: clubCount }] = await sql`SELECT count(*)::int FROM clubs WHERE status = 'ACTIVE'`;
+    const [{ count: appCount }] = await sql`SELECT count(*)::int FROM club_applications WHERE status = 'PENDING'`;
+    const [{ count: eventCount }] = await sql`SELECT count(*)::int FROM events`;
+    const [{ count: regCount }] = await sql`SELECT count(*)::int FROM registrations`;
+    const [{ count: attCount }] = await sql`SELECT count(*)::int FROM attendances`;
+
+    const totalHeadcount = Math.max(regCount, 1);
+    const turnoutRate = Math.round((attCount / totalHeadcount) * 100);
+
+    return {
+      totalUsers: userCount,
+      totalClubs: clubCount,
+      pendingApplications: appCount,
+      totalEvents: eventCount,
+      totalRegistrations: regCount,
+      turnoutRatePercentage: turnoutRate,
+    };
+  } catch (error) {
+    console.error("getAdminStats error:", error);
+    return {
+      totalUsers: 0,
+      totalClubs: 0,
+      pendingApplications: 0,
+      totalEvents: 0,
+      totalRegistrations: 0,
+      turnoutRatePercentage: 0,
+    };
+  }
+}
+
+export async function updateUserSystemRole(userId: string, role: "USER" | "SUPER_ADMIN"): Promise<boolean> {
+  try {
+    await sql`UPDATE users SET system_role = ${role}, updated_at = NOW() WHERE id = ${userId}`;
+    return true;
+  } catch (error) {
+    console.error("updateUserSystemRole error:", error);
+    return false;
+  }
+}
+
+export async function updateClubStatus(clubId: string, status: "ACTIVE" | "SUSPENDED"): Promise<boolean> {
+  try {
+    await sql`UPDATE clubs SET status = ${status}, updated_at = NOW() WHERE id = ${clubId}`;
+    return true;
+  } catch (error) {
+    console.error("updateClubStatus error:", error);
+    return false;
+  }
+}
+
+export async function reviewPaymentRegistration(
+  registrationId: string,
+  status: "APPROVED" | "REJECTED",
+  rejectionReason?: string,
+  verifiedBy?: string
+): Promise<boolean> {
+  try {
+    await sql`
+      UPDATE registrations SET
+        status = ${status},
+        rejection_reason = ${rejectionReason || null},
+        verified_by = ${verifiedBy || null},
+        verified_at = NOW()
+      WHERE id = ${registrationId}
+    `;
+    return true;
+  } catch (error) {
+    console.error("reviewPaymentRegistration error:", error);
     return false;
   }
 }
