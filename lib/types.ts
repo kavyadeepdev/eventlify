@@ -10,6 +10,10 @@ export interface EventApiData {
   endsAt: string;
   clubId: string;
   slug: string;
+  isPaid?: boolean;
+  feeAmount?: number;
+  upiId?: string | null;
+  upiQrUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
   isPaid?: boolean;
@@ -24,6 +28,7 @@ export interface ClubApiData {
   description: string;
   logo: string | null;
   slug: string;
+  status?: "ACTIVE" | "SUSPENDED";
   createdAt?: string;
   updatedAt?: string;
 }
@@ -36,6 +41,7 @@ export interface UserApiData {
   image: string | null;
   usn: string | null;
   slug: string;
+  systemRole?: "USER" | "SUPER_ADMIN";
   createdAt?: string;
   updatedAt?: string;
 }
@@ -72,9 +78,9 @@ export interface ClubMemberApiData {
   name: string;
   email: string;
   image: string | null;
+  customRoles?: ClubRoleApiData[];
 }
 
-/** Same shape as club members — `GET /api/teams/[id]` joins users identically. */
 export type TeamMemberApiData = ClubMemberApiData;
 
 export interface RegistrationApiData {
@@ -86,6 +92,12 @@ export interface RegistrationApiData {
   userName: string | null;
   userEmail: string | null;
   teamName: string | null;
+  status?: "CONFIRMED" | "PENDING_VERIFICATION" | "APPROVED" | "REJECTED";
+  paymentProofUrl?: string | null;
+  transactionId?: string | null;
+  rejectionReason?: string | null;
+  verifiedBy?: string | null;
+  verifiedAt?: string | null;
 }
 
 export interface AttendanceApiData {
@@ -107,6 +119,7 @@ export interface ClubDetailApiResponse {
   members: ClubMemberApiData[];
   contacts: ContactApiData[];
   links: LinkApiData[];
+  roles?: ClubRoleApiData[];
 }
 
 export interface ClubEventsApiResponse {
@@ -135,7 +148,7 @@ export interface HistoryRegistrationApiData {
   art: string | null;
   teamId: string | null;
   teamName: string | null;
-  status?: string;
+  status?: "CONFIRMED" | "PENDING_VERIFICATION" | "APPROVED" | "REJECTED";
   paymentProofUrl?: string | null;
   transactionId?: string | null;
   rejectionReason?: string | null;
@@ -151,7 +164,59 @@ export interface HistoryAttendanceApiData {
 }
 
 export interface UserHistoryApiResponse {
-  user: Pick<UserApiData, "id" | "name" | "slug">;
+  user: Pick<UserApiData, "id" | "name" | "slug" | "usn" | "image">;
   registrations: HistoryRegistrationApiData[];
   attendances: HistoryAttendanceApiData[];
+}
+
+export interface ClubApplicationApiData {
+  id: string;
+  applicantId: string;
+  name: string;
+  slug: string;
+  category: string;
+  description: string;
+  logo: string | null;
+  contactEmail: string;
+  contactPhone: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  rejectionReason: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  applicantName?: string;
+  applicantEmail?: string;
+}
+
+export interface ClubRoleApiData {
+  id: string;
+  clubId: string;
+  name: string;
+  color: string;
+  rank: number;
+  permissions: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ClubApiKeyApiData {
+  id: string;
+  clubId: string;
+  name: string;
+  keyPrefix: string;
+  allowedOrigins: string[];
+  rateLimitPerMin: number;
+  lastUsedAt?: string | null;
+  expiresAt?: string | null;
+  createdAt: string;
+}
+
+export interface AdminStatsApiResponse {
+  totalUsers: number;
+  totalClubs: number;
+  pendingApplications: number;
+  totalEvents: number;
+  totalRegistrations: number;
+  turnoutRatePercentage: number;
 }
