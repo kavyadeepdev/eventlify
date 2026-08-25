@@ -7,6 +7,7 @@ import { getSessionUser } from "@/lib/session";
 import { formatDateTime, hasPassed } from "@/lib/format";
 import PassCard from "@/components/dashboard/pass-card";
 import ProfileForm from "@/components/dashboard/profile-form";
+import DigitalPass from "@/components/dashboard/digital-pass";
 import Avatar from "@/components/shared/avatar";
 import EmptyState from "@/components/shared/empty-state";
 import WaveEdge from "@/components/shared/wave-edge";
@@ -25,6 +26,10 @@ export const metadata: Metadata = {
 export default async function DashboardPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login?next=/dashboard");
+
+  // Signing in is the only entry point, so anyone without a USN still needs
+  // their pass issued before the portal makes sense.
+  if (!user.usn) redirect("/onboarding");
 
   const [history, profile] = await Promise.all([
     getUserHistory(user.slug),
@@ -145,10 +150,26 @@ export default async function DashboardPage() {
           </div>
 
           <aside className="space-y-6 lg:col-span-4">
+            <DigitalPass
+              name={profile?.name ?? user.name}
+              usn={profile?.usn ?? user.usn ?? ""}
+              image={profile?.image ?? user.image}
+              issuedOn={
+                profile?.createdAt
+                  ? new Date(profile.createdAt).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : undefined
+              }
+            />
+
             <ProfileForm
               name={profile?.name ?? user.name}
               usn={profile?.usn ?? user.usn}
               email={user.email}
+              image={profile?.image ?? user.image}
             />
 
             <div className="brutal rounded-2xl bg-card p-6">

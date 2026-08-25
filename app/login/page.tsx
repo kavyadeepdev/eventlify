@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getSessionUser } from "@/lib/session";
@@ -52,10 +51,10 @@ export default async function LoginPage({
       <section className="flex min-w-0 items-center justify-center px-4 py-12 sm:px-8 sm:py-16">
         <div className="min-w-0 w-full max-w-sm space-y-6">
           <div className="space-y-2 text-center">
-            <h1 className="display text-5xl">Welcome back</h1>
+            <h1 className="display text-5xl">Sign in</h1>
             <p className="text-sm text-muted-foreground">
-              Continue with your BMSCE Google account to pick up where you left
-              off.
+              Continue with your BMSCE Google account. New students get their
+              pass on the way in.
             </p>
           </div>
 
@@ -66,18 +65,14 @@ export default async function LoginPage({
             />
 
             <p className="text-center text-xs text-muted-foreground">
-              New here?{" "}
-              <Link
-                href="/signup"
-                className="font-bold underline decoration-[3px] underline-offset-4 hover:text-grape"
-              >
-                Create your account
-              </Link>
+              First time here? Signing in creates your pass — no separate
+              account to set up.
             </p>
           </div>
 
           <p className="text-center text-xs text-muted-foreground">
-            By continuing you agree to keep BMSCE events fun and spam-free.
+            Only <span className="font-semibold text-ink">@bmsce.ac.in</span>{" "}
+            accounts can sign in.
           </p>
         </div>
       </section>

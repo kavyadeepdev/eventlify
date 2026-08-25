@@ -1,8 +1,11 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { PostgresJSDialect } from "kysely-postgres-js";
 import postgres from "postgres";
 
 import { slugify } from "./format";
+
+const ALLOWED_EMAIL_DOMAIN = "bmsce.ac.in";
 
 const googleCliendId = process.env.GOOGLE_CLIENT_ID;
 const googleCliendSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -30,6 +33,16 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
+          // `hd` on the Google provider only filters the account chooser — it
+          // is not enforced, so the domain is checked here before any account
+          // is created.
+          const email = (user.email || "").toLowerCase();
+          if (!email.endsWith(`@${ALLOWED_EMAIL_DOMAIN}`)) {
+            throw new APIError("FORBIDDEN", {
+              message: `Sign in with your @${ALLOWED_EMAIL_DOMAIN} account.`,
+            });
+          }
+
           const nameSlug = slugify(user.name || "");
           const emailHandle = (user.email || "").split("@")[0].replace(/\./g, "-");
           const emailSlug = slugify(emailHandle);
@@ -121,7 +134,7 @@ export const auth = betterAuth({
     google: {
       clientId: googleCliendId as string,
       clientSecret: googleCliendSecret as string,
-      hd: "bmsce.ac.in",
+      hd: ALLOWED_EMAIL_DOMAIN,
     },
   },
 });
