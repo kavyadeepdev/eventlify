@@ -56,7 +56,12 @@ event-app/
 ├── migrations/                 # PostgreSQL domain migration scripts
 ├── better-auth_migrations/     # Better Auth database migration scripts
 ├── docs/                       # Comprehensive documentation suite
-│   ├── architecture.md         # System architecture document
+│   ├── architecture.md         # System architecture, BaaS, subdomains & AI spec
+│   ├── flows.md                # Operational & user sequence flows across personas
+│   ├── roles.md                # Capabilities, actions & visible data matrix per persona
+│   ├── pages.md                # Frontend pages directory across all subdomains
+│   ├── routes.md               # Complete backend REST API endpoints reference
+│   ├── design.md               # Frontend design system, tokens, components & animations
 │   ├── database.md             # Entity Relationship Diagram & table explanations
 │   ├── decisions.md            # Architecture Decision Records (ADRs)
 │   └── ERD.svg                 # Visual ERD diagram graphic
