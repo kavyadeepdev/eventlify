@@ -31,6 +31,11 @@
 - Don't duplicate existing utilities (e.g. use `cn` from `lib/utils.ts`).
 - Follow existing naming conventions (`snake_case` in database, `camelCase` in TypeScript).
 - Don't introduce new dependencies without justification.
+- Follow Conventional Commits format for commit messages and prefer using lowercase (e.g., `feat: add solo registration validation`, `fix: correct event deadline timezone check`).
+- Only implement features in accordance with the existing project documentation in `docs/`.
+- If any new feature or architectural change is needed, consult with the prompter to inform them that a change in the architecture is required.
+- If the prompter approves the architectural/feature change, ensure all changes are fully reflected in the respective documentation files in `docs/`.
+- The `main` branch is protected; all code changes must be made via topic/feature branches and submitted via Pull Requests accordingly.
 
 ## Database
 
