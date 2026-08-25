@@ -1454,3 +1454,159 @@
     visibility: hidden;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Digital pass
+   -------------------------------------------------------------------------- */
+
+.pass {
+  /* Sits above the halftone page texture without inheriting it. */
+  isolation: isolate;
+}
+
+/* Fine security guilloche behind the card contents. */
+.pass__texture {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.16;
+  background-image:
+    repeating-linear-gradient(
+      115deg,
+      var(--color-grape) 0 1px,
+      transparent 1px 7px
+    ),
+    repeating-linear-gradient(
+      -115deg,
+      var(--color-aqua) 0 1px,
+      transparent 1px 9px
+    );
+}
+
+.pass__portrait {
+  box-shadow: 0 0 0 3px rgba(215, 255, 56, 0.25);
+}
+
+/* The crest, stamped over the lower-right corner. */
+.pass__stamp {
+  position: absolute;
+  right: -0.9rem;
+  bottom: -0.9rem;
+  display: block;
+  width: 8.5rem;
+  height: 8.5rem;
+  pointer-events: none;
+  opacity: 0.9;
+  transform: rotate(-14deg);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+}
+
+@media (min-width: 640px) {
+  .pass__stamp {
+    width: 10rem;
+    height: 10rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Issue animation: the card lands, then the crest is stamped onto it
+   -------------------------------------------------------------------------- */
+
+.pass--issuing {
+  animation: pass-land 0.75s var(--ease-out-expo) both;
+}
+
+.pass--issuing .pass__stamp {
+  animation: stamp-press 0.62s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+  animation-delay: 0.72s;
+}
+
+/* Everything inside fades up just behind the card's own entrance. */
+.pass--issuing > *:not(.pass__stamp):not(.pass__texture) {
+  animation: pass-fill 0.5s ease-out both;
+  animation-delay: 0.4s;
+}
+
+@keyframes pass-land {
+  0% {
+    opacity: 0;
+    transform: translateY(38px) scale(0.94) rotate(-2.5deg);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.01) rotate(0.4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes pass-fill {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Crest drops in from above the card, overshoots on impact, settles. */
+@keyframes stamp-press {
+  0% {
+    opacity: 0;
+    transform: rotate(-32deg) scale(2.6);
+  }
+  55% {
+    opacity: 1;
+    transform: rotate(-11deg) scale(0.9);
+  }
+  72% {
+    transform: rotate(-15deg) scale(1.08);
+  }
+  100% {
+    opacity: 0.9;
+    transform: rotate(-14deg) scale(1);
+  }
+}
+
+/* Shockwave ring thrown out at the moment of impact. */
+.pass--issuing::after {
+  content: "";
+  position: absolute;
+  right: 2.4rem;
+  bottom: 2.4rem;
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid var(--color-limepop);
+  border-radius: 999px;
+  pointer-events: none;
+  opacity: 0;
+  animation: stamp-shock 0.5s ease-out both;
+  animation-delay: 1.06s;
+}
+
+@keyframes stamp-shock {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pass--issuing,
+  .pass--issuing .pass__stamp,
+  .pass--issuing > *,
+  .pass--issuing::after {
+    animation: none;
+  }
+  .pass--issuing::after {
+    display: none;
+  }
+}

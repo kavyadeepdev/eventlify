@@ -9,6 +9,7 @@ import { EventApiData, TeamApiData } from "@/lib/types";
 import type { ActionState } from "@/lib/action-state";
 
 import {
+  isUsnTaken,
   updateUserProfile,
   reviewPaymentRegistration,
   updateUserSystemRole,
@@ -325,10 +326,81 @@ export async function removeClubMemberAction(
 
 /* --------------------------------- profile ---------------------------------- */
 
+/**
+ * BMSCE USNs look like `1BM24CS001` — college code, admission year, branch,
+ * roll. Kept slightly permissive so lateral-entry and future branch codes
+ * still pass.
+ */
+const usnSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(
+    /^[0-9][A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{3}$/,
+    "That doesn't look like a USN (example: 1BM24CS001)"
+  );
+
+/** Uploaded pictures are stored inline, so cap them well below a TEXT blowup. */
+const MAX_PICTURE_BYTES = 400_000;
+
+const pictureSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) =>
+      value === "" ||
+      value.startsWith("https://") ||
+      value.startsWith("data:image/"),
+    "That picture isn't a valid image"
+  )
+  .refine(
+    (value) => value.length <= MAX_PICTURE_BYTES,
+    "That image is too large — pick one under 300KB"
+  );
+
 const profileSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
-  usn: z.string().max(30).or(z.literal("")),
+  usn: usnSchema,
+  image: pictureSchema,
 });
+
+export async function completeOnboardingAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const user = await getSessionUser();
+  if (!user) return failure("Sign in with your BMSCE account first.");
+
+  const parsed = profileSchema.safeParse({
+    name: String(formData.get("name") ?? "").trim(),
+    usn: String(formData.get("usn") ?? ""),
+    image: String(formData.get("image") ?? ""),
+  });
+
+  if (!parsed.success) {
+    return failure(parsed.error.issues[0]?.message ?? "Check the form.");
+  }
+
+  const { name, usn, image } = parsed.data;
+
+  if (await isUsnTaken(usn, user.id)) {
+    return failure(`${usn} is already linked to another account.`);
+  }
+
+  const ok = await updateUserProfile(user.id, {
+    name,
+    usn,
+    image: image || null,
+  });
+
+  if (!ok) return failure("Could not issue your pass. Try again.");
+
+  // Only the dashboard is revalidated. Revalidating /onboarding would refresh
+  // the page the student is still standing on, and its server component — now
+  // seeing a USN — would redirect away before the pass reveal is shown.
+  revalidatePath("/dashboard");
+  return success("Pass issued.");
+}
 
 export async function updateProfileAction(
   _prev: ActionState,
@@ -339,22 +411,30 @@ export async function updateProfileAction(
 
   const parsed = profileSchema.safeParse({
     name: String(formData.get("name") ?? "").trim(),
-    usn: String(formData.get("usn") ?? "").trim(),
+    usn: String(formData.get("usn") ?? ""),
+    image: String(formData.get("image") ?? ""),
   });
 
   if (!parsed.success) {
     return failure(parsed.error.issues[0]?.message ?? "Check the form.");
   }
 
+  const { name, usn, image } = parsed.data;
+
+  if (await isUsnTaken(usn, user.id)) {
+    return failure(`${usn} is already linked to another account.`);
+  }
+
   const ok = await updateUserProfile(user.id, {
-    name: parsed.data.name,
-    usn: parsed.data.usn || null,
+    name,
+    usn,
+    image: image || null,
   });
 
   if (!ok) return failure("Could not save your profile.");
 
   revalidatePath("/dashboard");
-  return success("Profile updated.");
+  return success("Pass updated.");
 }
 
 /* --------------------------- Payment Verification --------------------------- */

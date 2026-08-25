@@ -289,6 +289,8 @@ export async function updateUserProfile(
   data: { name: string; usn: string | null; image?: string | null }
 ): Promise<boolean> {
   try {
+    // `image` is optional: callers that only edit name/USN must not wipe an
+    // existing picture.
     if (data.image !== undefined) {
       await sql`
         UPDATE users SET
@@ -430,6 +432,29 @@ export async function reviewPaymentRegistration(
     return true;
   } catch (error) {
     console.error("reviewPaymentRegistration error:", error);
+    return false;
+  }
+}
+
+/**
+ * True when another account has already claimed this USN. Guards the pass
+ * from being issued twice for the same student.
+ */
+export async function isUsnTaken(
+  usn: string,
+  exceptUserId: string
+): Promise<boolean> {
+  try {
+    const rows = await sql`
+      SELECT id FROM users
+      WHERE upper(usn) = upper(${usn}) AND id <> ${exceptUserId}
+      LIMIT 1
+    `;
+    return rows.length > 0;
+  } catch (error) {
+    console.error("isUsnTaken error:", error);
+    // Fail open rather than blocking onboarding on a lookup error; the unique
+    // check is a nicety, not a security boundary.
     return false;
   }
 }
