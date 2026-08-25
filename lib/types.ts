@@ -148,7 +148,11 @@ export interface HistoryRegistrationApiData {
   art: string | null;
   teamId: string | null;
   teamName: string | null;
+<<<<<<< HEAD
   status?: "CONFIRMED" | "PENDING_VERIFICATION" | "APPROVED" | "REJECTED";
+=======
+  status?: string;
+>>>>>>> 9278af7 (fix: deployment errors and duplicates in types)
   paymentProofUrl?: string | null;
   transactionId?: string | null;
   rejectionReason?: string | null;
