@@ -83,3 +83,4 @@ Please take a moment to review this guide before submitting your pull requests.
    * `docs: update database schema reference`
 3. **Open PR**: Push your branch and open a Pull Request against the `main` branch. Include a detailed description of the changes made and link to relevant documentation or issues.
 4. **Update Docs**: If your changes introduce new database tables, routes, or architectural patterns, please update the respective files in the [`docs/`](docs/) directory (`docs/database.md`, `docs/architecture.md`, `AGENTS.md`).
+5. **Update Changelog**: For notable new features, bug fixes, or breaking changes, add an entry under the `[Unreleased]` section in [`CHANGELOG.md`](CHANGELOG.md) following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) standards.

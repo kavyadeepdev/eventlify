@@ -19,6 +19,7 @@
 - `better-auth_migrations/` — Better Auth database migrations
 - `docs/` — project documentation suite (`database.md`, `architecture.md`, `decisions.md`, `ERD.svg`)
 - `scripts/` — database seeding and utility scripts
+- `CHANGELOG.md` — project release notes and feature history
 
 ## Rules
 
@@ -32,6 +33,7 @@
 - Follow existing naming conventions (`snake_case` in database, `camelCase` in TypeScript).
 - Don't introduce new dependencies without justification.
 - Follow Conventional Commits format for commit messages and prefer using lowercase (e.g., `feat: add solo registration validation`, `fix: correct event deadline timezone check`).
+- Maintain `CHANGELOG.md` by logging notable additions, fixes, and architectural changes under `[Unreleased]`.
 - Only implement features in accordance with the existing project documentation in `docs/`.
 - If any new feature or architectural change is needed, consult with the prompter to inform them that a change in the architecture is required.
 - If the prompter approves the architectural/feature change, ensure all changes are fully reflected in the respective documentation files in `docs/`.

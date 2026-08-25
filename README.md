@@ -65,6 +65,7 @@ event-app/
 │   ├── database.md             # Entity Relationship Diagram & table explanations
 │   ├── decisions.md            # Architecture Decision Records (ADRs)
 │   └── ERD.svg                 # Visual ERD diagram graphic
+├── CHANGELOG.md                 # Project release notes, version history, and changelog
 └── scripts/                    # Database utility and seeding scripts
 ```
 
