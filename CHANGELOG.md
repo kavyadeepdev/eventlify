@@ -16,6 +16,22 @@ Commit messages across this repository follow the [Conventional Commits](https:/
 
 ---
 
+## [0.5.0-beta.3] - 2026-08-25
+
+### Added
+- **Digital Student Pass & Onboarding Flow**: Implemented interactive `/onboarding` route (`app/onboarding/page.tsx`, `onboarding-flow.tsx`) issuing a digital student pass upon first-time BMSCE sign-in.
+- **BMSCE Crest Vector Art & Animation**: Built a vector art crest component (`bmsce-crest.tsx`) with a 24-tooth cog, circular lettering, twin-tower bridge roundel, diagonal bolt, and drop-in stamp impact animation with a shockwave ring.
+- **Client-Side Picture Picker**: Built an in-browser image cropper (`picture-picker.tsx`) that center-crops photos to 256px JPEG data URLs saved directly to `users.image`.
+- **Dashboard Profile Form Updates**: Added digital pass display (`digital-pass.tsx`), active club membership placeholders, and server action profile updates for name, USN, and picture (`lib/actions.ts`).
+
+### Changed & Removed
+- **Unified Sign-In Experience**: Removed the standalone `/signup` page (`app/signup/page.tsx`), standardizing account creation automatically upon first Google Sign-In via `/login`.
+
+### Security
+- **Strict Domain Verification Hook**: Added server-side domain verification in the Better Auth user-creation hook (`lib/auth.ts`) ensuring `@bmsce.ac.in` email restriction is enforced before any database row creation.
+
+---
+
 ## [0.4.0-beta.2] - 2026-08-25
 
 ### Added
