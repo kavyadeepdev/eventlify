@@ -8,7 +8,13 @@ import { getSessionUser } from "@/lib/session";
 import { EventApiData, TeamApiData } from "@/lib/types";
 import type { ActionState } from "@/lib/action-state";
 
-import { updateUserProfile } from "@/lib/db-queries";
+import {
+  updateUserProfile,
+  reviewPaymentRegistration,
+  updateUserSystemRole,
+  updateClubStatus,
+} from "@/lib/db-queries";
+import sql from "@/lib/db";
 
 const failure = (error: string): ActionState => ({
   ok: false,
@@ -22,21 +28,12 @@ const success = (message: string): ActionState => ({
   error: null,
 });
 
-/**
- * Every mutation requires a signed-in user. Note the REST API itself is still
- * open — this is a UI-level guard, not a replacement for API authorization.
- */
 async function requireUser() {
   const user = await getSessionUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   return user;
 }
 
-/**
- * Any 8-4-4-4-12 hex id. Zod's `uuid()` also enforces an RFC version nibble,
- * which the project's seeded ids (`00000000-0000-0000-0000-000000000006`)
- * don't carry — the frontend shouldn't be stricter than the database.
- */
 const uuidLike = z
   .string()
   .regex(
@@ -56,16 +53,21 @@ export async function registerSoloAction(
   const user = await getSessionUser();
   if (!user) return failure("Sign in with your campus account to register.");
 
+  const paymentProofUrl = String(formData.get("paymentProofUrl") ?? "").trim() || null;
+  const transactionId = String(formData.get("transactionId") ?? "").trim() || null;
+
   const result = await sendJson(`/api/events/${encodeURIComponent(slug)}/register`, "POST", {
     mode: "SOLO",
     userId: user.id,
+    paymentProofUrl,
+    transactionId,
   });
 
   if (!result.ok) return failure(result.error ?? "Registration failed.");
 
   revalidatePath(`/events/${slug}`);
   revalidatePath("/dashboard");
-  return success("You're in! See you there.");
+  return success("Registration submitted successfully.");
 }
 
 const teamSchema = z.object({
@@ -73,6 +75,8 @@ const teamSchema = z.object({
   memberIds: z.array(uuidLike).max(50),
   minTeamSize: z.number().int().min(1),
   maxTeamSize: z.number().int().min(1),
+  paymentProofUrl: z.string().optional(),
+  transactionId: z.string().optional(),
 });
 
 export async function registerTeamAction(
@@ -87,10 +91,11 @@ export async function registerTeamAction(
 
   const parsed = teamSchema.safeParse({
     teamName: String(formData.get("teamName") ?? "").trim(),
-    // The captain is implicit; the form submits teammates only.
     memberIds: formData.getAll("memberIds").map(String).filter(Boolean),
     minTeamSize: Number(formData.get("minTeamSize") ?? 1),
     maxTeamSize: Number(formData.get("maxTeamSize") ?? 1),
+    paymentProofUrl: String(formData.get("paymentProofUrl") ?? "").trim() || undefined,
+    transactionId: String(formData.get("transactionId") ?? "").trim() || undefined,
   });
 
   if (!parsed.success) {
@@ -99,7 +104,7 @@ export async function registerTeamAction(
     );
   }
 
-  const { teamName, minTeamSize, maxTeamSize } = parsed.data;
+  const { teamName, minTeamSize, maxTeamSize, paymentProofUrl, transactionId } = parsed.data;
   const teammates = parsed.data.memberIds.filter((id) => id !== user.id);
   const size = teammates.length + 1;
 
@@ -123,7 +128,6 @@ export async function registerTeamAction(
 
   const teamId = created.data.team.id;
 
-  // Captain first, then teammates.
   const captain = await sendJson(`/api/teams/${teamId}/members`, "POST", {
     userId: user.id,
     role: "ADMIN",
@@ -141,13 +145,13 @@ export async function registerTeamAction(
   const registered = await sendJson(
     `/api/events/${encodeURIComponent(slug)}/register`,
     "POST",
-    { mode: "TEAM", teamId }
+    { mode: "TEAM", teamId, paymentProofUrl, transactionId }
   );
   if (!registered.ok) return failure(registered.error ?? "Registration failed.");
 
   revalidatePath(`/events/${slug}`);
   revalidatePath("/dashboard");
-  return success(`Team "${teamName}" is registered. Good luck!`);
+  return success(`Team "${teamName}" registration submitted.`);
 }
 
 /* -------------------------------- attendance -------------------------------- */
@@ -237,9 +241,16 @@ export async function createEventAction(
   }
 
   const data = parsed.data;
+  const isPaid = formData.get("isPaid") === "true";
+  const feeAmount = Number(formData.get("feeAmount") ?? 0);
+  const upiId = String(formData.get("upiId") ?? "").trim() || null;
+
   const result = await sendJson<{ event: EventApiData }>("/api/events", "POST", {
     ...data,
     art: data.art || null,
+    isPaid,
+    feeAmount,
+    upiId,
     registrationDeadline: new Date(data.registrationDeadline).toISOString(),
     startsAt: new Date(data.startsAt).toISOString(),
     endsAt: new Date(data.endsAt).toISOString(),
@@ -344,4 +355,137 @@ export async function updateProfileAction(
 
   revalidatePath("/dashboard");
   return success("Profile updated.");
+}
+
+/* --------------------------- Payment Verification --------------------------- */
+
+export async function reviewPaymentAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const user = await getSessionUser();
+  if (!user) return failure("Sign in to verify payments.");
+
+  const registrationId = String(formData.get("registrationId") ?? "");
+  const status = String(formData.get("status") ?? "") as "APPROVED" | "REJECTED";
+  const rejectionReason = String(formData.get("rejectionReason") ?? "").trim();
+  const eventSlug = String(formData.get("eventSlug") ?? "");
+
+  if (!registrationId || !status) return failure("Missing verification data.");
+
+  const ok = await reviewPaymentRegistration(registrationId, status, rejectionReason, user.id);
+  if (!ok) return failure("Could not update payment verification status.");
+
+  if (eventSlug) revalidatePath(`/events/${eventSlug}/manage`);
+  return success(`Payment ${status.toLowerCase()}.`);
+}
+
+/* ---------------------------- Club Applications ----------------------------- */
+
+export async function applyForClubAction(formData: FormData): Promise<void> {
+  const user = await getSessionUser();
+  if (!user) return;
+
+  const name = String(formData.get("name") ?? "").trim();
+  const slug = String(formData.get("slug") ?? "").trim();
+  const category = String(formData.get("category") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const logo = String(formData.get("logo") ?? "").trim() || null;
+  const contactEmail = String(formData.get("contactEmail") ?? "").trim();
+  const contactPhone = String(formData.get("contactPhone") ?? "").trim() || null;
+
+  if (!name || !slug || !category || !description || !contactEmail) return;
+
+  try {
+    await sql`
+      INSERT INTO club_applications (
+        applicant_id, name, slug, category, description, logo, contact_email, contact_phone
+      ) VALUES (
+        ${user.id}, ${name}, ${slug}, ${category}, ${description}, ${logo}, ${contactEmail}, ${contactPhone}
+      )
+    `;
+    revalidatePath("/clubs/apply/status");
+    redirect("/clubs/apply/status");
+  } catch (error: any) {
+    console.error("applyForClubAction error:", error);
+  }
+}
+
+export async function reviewApplicationAction(formData: FormData): Promise<void> {
+  const user = await getSessionUser();
+  if (!user) return;
+
+  const appId = String(formData.get("applicationId") ?? "");
+  const action = String(formData.get("action") ?? "") as "APPROVE" | "REJECT";
+  const rejectionReason = String(formData.get("rejectionReason") ?? "").trim();
+
+  if (!appId || !action) return;
+
+  try {
+    const [app] = await sql`SELECT * FROM club_applications WHERE id = ${appId}`;
+    if (!app) return;
+
+    if (action === "APPROVE") {
+      const [club] = await sql`
+        INSERT INTO clubs (name, description, logo, slug, status)
+        VALUES (${app.name}, ${app.description}, ${app.logo}, ${app.slug}, 'ACTIVE')
+        RETURNING id
+      `;
+
+      await sql`
+        INSERT INTO club_members (club_id, user_id, role)
+        VALUES (${club.id}, ${app.applicant_id}, 'ADMIN')
+        ON CONFLICT DO NOTHING
+      `;
+
+      await sql`
+        UPDATE club_applications SET
+          status = 'APPROVED',
+          reviewed_by = ${user.id},
+          reviewed_at = NOW()
+        WHERE id = ${appId}
+      `;
+    } else {
+      await sql`
+        UPDATE club_applications SET
+          status = 'REJECTED',
+          rejection_reason = ${rejectionReason || null},
+          reviewed_by = ${user.id},
+          reviewed_at = NOW()
+        WHERE id = ${appId}
+      `;
+    }
+
+    revalidatePath("/admin/applications");
+  } catch (error: any) {
+    console.error("reviewApplicationAction error:", error);
+  }
+}
+
+/* ------------------------------- Super Admin -------------------------------- */
+
+export async function updateUserRoleAction(formData: FormData): Promise<void> {
+  const user = await getSessionUser();
+  if (!user) return;
+
+  const targetUserId = String(formData.get("userId") ?? "");
+  const role = String(formData.get("role") ?? "") as "USER" | "SUPER_ADMIN";
+
+  if (!targetUserId || !role) return;
+
+  await updateUserSystemRole(targetUserId, role);
+  revalidatePath("/admin/users");
+}
+
+export async function toggleClubStatusAction(formData: FormData): Promise<void> {
+  const user = await getSessionUser();
+  if (!user) return;
+
+  const clubId = String(formData.get("clubId") ?? "");
+  const status = String(formData.get("status") ?? "") as "ACTIVE" | "SUSPENDED";
+
+  if (!clubId || !status) return;
+
+  await updateClubStatus(clubId, status);
+  revalidatePath("/admin/clubs");
 }

@@ -2,7 +2,9 @@ import { CircleAlert, CircleCheck } from "lucide-react";
 import { ActionState } from "@/lib/action-state";
 
 /** Renders the success / error line returned by a server action. */
-export default function FormMessage({ state }: { state: ActionState }) {
+export default function FormMessage({ state }: { state?: ActionState }) {
+  if (!state) return null;
+
   if (state.error) {
     return (
       <p
