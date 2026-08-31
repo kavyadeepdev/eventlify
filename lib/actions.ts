@@ -340,67 +340,11 @@ const usnSchema = z
     "That doesn't look like a USN (example: 1BM24CS001)"
   );
 
-/** Uploaded pictures are stored inline, so cap them well below a TEXT blowup. */
-const MAX_PICTURE_BYTES = 400_000;
-
-const pictureSchema = z
-  .string()
-  .trim()
-  .refine(
-    (value) =>
-      value === "" ||
-      value.startsWith("https://") ||
-      value.startsWith("data:image/"),
-    "That picture isn't a valid image"
-  )
-  .refine(
-    (value) => value.length <= MAX_PICTURE_BYTES,
-    "That image is too large — pick one under 300KB"
-  );
-
 const profileSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   usn: usnSchema,
-  image: pictureSchema,
+  image: z.string().max(400_000).optional().default(""),
 });
-
-export async function completeOnboardingAction(
-  _prev: ActionState,
-  formData: FormData
-): Promise<ActionState> {
-  const user = await getSessionUser();
-  if (!user) return failure("Sign in with your BMSCE account first.");
-
-  const parsed = profileSchema.safeParse({
-    name: String(formData.get("name") ?? "").trim(),
-    usn: String(formData.get("usn") ?? ""),
-    image: String(formData.get("image") ?? ""),
-  });
-
-  if (!parsed.success) {
-    return failure(parsed.error.issues[0]?.message ?? "Check the form.");
-  }
-
-  const { name, usn, image } = parsed.data;
-
-  if (await isUsnTaken(usn, user.id)) {
-    return failure(`${usn} is already linked to another account.`);
-  }
-
-  const ok = await updateUserProfile(user.id, {
-    name,
-    usn,
-    image: image || null,
-  });
-
-  if (!ok) return failure("Could not issue your pass. Try again.");
-
-  // Only the dashboard is revalidated. Revalidating /onboarding would refresh
-  // the page the student is still standing on, and its server component — now
-  // seeing a USN — would redirect away before the pass reveal is shown.
-  revalidatePath("/dashboard");
-  return success("Pass issued.");
-}
 
 export async function updateProfileAction(
   _prev: ActionState,

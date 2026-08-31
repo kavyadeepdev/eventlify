@@ -29,7 +29,6 @@ export default async function DashboardPage() {
 
   // Signing in is the only entry point, so anyone without a USN still needs
   // their pass issued before the portal makes sense.
-  if (!user.usn) redirect("/onboarding");
 
   const [history, profile] = await Promise.all([
     getUserHistory(user.slug),
@@ -152,8 +151,6 @@ export default async function DashboardPage() {
           <aside className="space-y-6 lg:col-span-4">
             <DigitalPass
               name={profile?.name ?? user.name}
-              usn={profile?.usn ?? user.usn ?? ""}
-              image={profile?.image ?? user.image}
               issuedOn={
                 profile?.createdAt
                   ? new Date(profile.createdAt).toLocaleDateString("en-IN", {

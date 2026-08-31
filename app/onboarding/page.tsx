@@ -4,26 +4,23 @@ import { getSessionUser } from "@/lib/session";
 import OnboardingFlow from "@/components/onboarding/onboarding-flow";
 
 export const metadata: Metadata = {
-  title: "Set up your pass",
-  description: "Add your USN and picture to finish setting up AfterClass.",
+  title: "Your pass",
+  description: "Your AfterClass pass.",
 };
 
 export default async function OnboardingPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login?next=/onboarding");
 
-  // Note there is deliberately no `redirect` for students who already have a
-  // USN. Next re-renders the current route once a server action resolves, so
-  // redirecting on the presence of a USN would fire the moment the pass is
-  // issued and skip the reveal. The flow handles the already-set-up case.
+  const issuedOn = new Date().toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
   return (
-    <main className="mx-auto w-full max-w-xl px-4 py-12 sm:px-6 sm:py-16">
-      <OnboardingFlow
-        name={user.name}
-        email={user.email}
-        defaultImage={user.image}
-        existingUsn={user.usn}
-      />
+    <main className="mx-auto w-full max-w-md px-4 py-8 sm:py-12">
+      <OnboardingFlow name={user.name} issuedOn={issuedOn} />
     </main>
   );
 }
