@@ -69,7 +69,10 @@ export default function DigitalPass({
       {/* Protocol stamp — a band of its own, so it never lands on the text */}
       <div className="relative flex items-center justify-center px-6 pb-1">
         <span aria-hidden="true" className="pass__stamp">
-          <ProtocolMark className="w-full" />
+          <span className="pass__stamp-frame">
+            <ProtocolMark className="pass__stamp-mark" />
+            <span className="pass__stamp-caption">Verified member</span>
+          </span>
         </span>
       </div>
 
