@@ -197,6 +197,19 @@ async function seed() {
           '2026-08-14 17:00:00+05:30',
           '10000000-0000-0000-0000-000000000003',
           'bms-open-quiz'
+        ),
+        (
+          '20000000-0000-0000-0000-000000000005',
+          'Project Blackscreen',
+          'Run by Protocol as part of Pentagram Week 25. A competitive coding event in pairs under an unusual constraint: the coder''s screen goes dark, and their partner earns screen time back by solving aptitude puzzles. Precision, speed and clean teamwork decide it. Winners took home California Burrito coupons.',
+          '/events/project-blackscreen.jpg',
+          2,
+          2,
+          '2025-11-13 23:59:59+05:30',
+          '2025-11-14 14:00:00+05:30',
+          '2025-11-14 17:00:00+05:30',
+          '10000000-0000-0000-0000-000000000001',
+          'project-blackscreen'
         )
       ON CONFLICT (id) DO NOTHING
     `;
@@ -221,6 +234,22 @@ async function seed() {
           NULL,
           'HackBMS Coordinator',
           '+91 9876543210'
+        ),
+        (
+          '30000000-0000-0000-0000-000000000003',
+          'PHONE',
+          '20000000-0000-0000-0000-000000000005',
+          NULL,
+          'Aaryan Prakash',
+          '+91 82176 17133'
+        ),
+        (
+          '30000000-0000-0000-0000-000000000004',
+          'PHONE',
+          '20000000-0000-0000-0000-000000000005',
+          NULL,
+          'Renganayaki Murugesh',
+          '+91 76762 00456'
         )
       ON CONFLICT (id) DO NOTHING
     `;
