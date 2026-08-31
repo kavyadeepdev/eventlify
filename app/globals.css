@@ -1459,110 +1459,243 @@
 
 /* --------------------------------------------------------------------------
    Digital pass
+
+   Landscape sketchbook ID card: a coloured frame around paper, a title chip,
+   ruled fields on dotted leaders, a barcode, and a portrait in a dashed box.
+   Sized so the whole card is always on screen — width is bounded by the
+   viewport and by the height left over after the page's own chrome, so
+   whichever runs out first wins.
    -------------------------------------------------------------------------- */
 
 .pass {
-  /* Sits above the halftone page texture without inheriting it. */
-  isolation: isolate;
+  --pass-reserve: 21rem;
+  --pass-max: 34rem;
+  --pass-ratio: 1.6; /* 8 / 5, a landscape ID card */
 
-  /* Portrait, sized so the whole card is on screen at once. Height is driven
-     by the viewport (minus whatever the page reserves for headings and
-     buttons) and capped so it can never grow wider than the screen; the width
-     then follows from the aspect ratio. */
-  --pass-reserve: 23.5rem;
-  --pass-max: 30rem;
-  --pass-ratio: 0.625; /* 5 / 8, close to a portrait ID card */
-  aspect-ratio: 5 / 8;
-  height: min(
-    calc(100svh - var(--pass-reserve)),
+  position: relative;
+  isolation: isolate;
+  aspect-ratio: 8 / 5;
+  width: min(
+    100%,
     var(--pass-max),
-    calc((100vw - 2.5rem) / var(--pass-ratio))
+    calc((100svh - var(--pass-reserve)) * var(--pass-ratio))
   );
   margin-inline: auto;
+  padding: clamp(0.5rem, 1.6cqw, 0.85rem);
+  container-type: inline-size;
+  border-radius: clamp(0.9rem, 3cqw, 1.6rem);
+  background: linear-gradient(150deg, var(--color-grape), #6b4be0 60%, #593fc4);
+  box-shadow:
+    0 18px 40px -18px rgba(17, 17, 22, 0.55),
+    6px 6px 0 var(--color-ink);
 }
 
-/* Phones carry a big heading and a button above the card, so they reserve
-   the most. Desktops have far more height and a proportionally smaller
-   heading, so the card is allowed to grow into it. */
 @media (min-width: 640px) {
   .pass {
-    --pass-reserve: 15rem;
-    --pass-max: 42rem;
+    --pass-reserve: 19rem;
+    --pass-max: 46rem;
   }
 }
 
 @media (min-width: 1024px) {
   .pass {
-    /* Copy sits beside the card here, so only the sticky header and the page
-       padding need reserving. */
-    --pass-reserve: 11rem;
-    --pass-max: 48rem;
+    --pass-reserve: 21rem;
+    --pass-max: 58rem;
   }
 }
 
-/* Card surface: a deep gradient with light pooling behind the monogram,
-   finished with a fine security guilloche. */
-.pass__texture {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    /* pooled light, top and bottom */
-    radial-gradient(
-      95% 55% at 50% 12%,
-      rgba(124, 77, 255, 0.42) 0%,
-      transparent 62%
-    ),
-    radial-gradient(
-      80% 45% at 50% 104%,
-      rgba(215, 163, 176, 0.24) 0%,
-      transparent 68%
-    ),
-    /* guilloche */
-    repeating-linear-gradient(
-      115deg,
-      rgba(124, 77, 255, 0.16) 0 1px,
-      transparent 1px 8px
-    ),
-    repeating-linear-gradient(
-      -115deg,
-      rgba(98, 233, 225, 0.11) 0 1px,
-      transparent 1px 10px
-    ),
-    /* base */
-    linear-gradient(168deg, #191926 0%, #12121b 46%, #1a1524 100%);
+/* The paper the card is drawn on. */
+.pass__paper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5cqw;
+  width: 100%;
+  height: 100%;
+  padding: 3cqw 3.4cqw;
+  overflow: hidden;
+  border-radius: clamp(0.5rem, 2cqw, 1rem);
+  background:
+    radial-gradient(120% 90% at 88% 8%, rgba(215, 163, 176, 0.16), transparent 60%),
+    var(--color-paper);
+  color: var(--color-ink);
 }
 
-/* A soft sheen raking across the card. */
-.pass::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(
-    104deg,
-    transparent 34%,
-    rgba(255, 255, 255, 0.05) 47%,
-    transparent 58%
+/* ---- title row ---- */
+
+.pass__top {
+  display: flex;
+  align-items: center;
+  gap: 2.4cqw;
+}
+
+.pass__index {
+  display: grid;
+  place-items: center;
+  min-width: 7cqw;
+  padding: 0.4cqw 1.4cqw;
+  border: 0.55cqw solid var(--color-ink);
+  border-radius: 1.2cqw;
+  font-family: var(--font-display);
+  font-size: 4.4cqw;
+  line-height: 1.15;
+}
+
+.pass__chip {
+  padding: 0.7cqw 2.6cqw;
+  border: 0.5cqw solid var(--color-ink);
+  border-radius: 999px;
+  font-size: 2.7cqw;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.pass__dots {
+  display: flex;
+  gap: 1.4cqw;
+}
+
+.pass__dots i {
+  width: 4.2cqw;
+  height: 4.2cqw;
+  border: 0.5cqw solid var(--color-ink);
+  border-radius: 999px;
+}
+
+.pass__dots i:nth-child(1) { background: var(--color-limepop); }
+.pass__dots i:nth-child(2) { background: var(--color-protocol); }
+.pass__dots i:nth-child(3) { background: var(--color-aqua); }
+
+/* ---- body ---- */
+
+.pass__body {
+  display: grid;
+  grid-template-columns: 1fr 26cqw;
+  gap: 3cqw;
+  flex: 1;
+  min-height: 0;
+}
+
+.pass__fields {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3.2cqw;
+  min-width: 0;
+}
+
+.pass__field {
+  display: flex;
+  align-items: baseline;
+  gap: 1.4cqw;
+  min-width: 0;
+  /* The dotted rule the value sits on. */
+  border-bottom: 0.4cqw dashed rgba(17, 17, 22, 0.32);
+  padding-bottom: 1cqw;
+}
+
+.pass__field-label {
+  flex-shrink: 0;
+  font-size: 2.7cqw;
+  font-weight: 600;
+  color: rgba(17, 17, 22, 0.55);
+}
+
+.pass__field-value {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 4.2cqw;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ---- barcode ---- */
+
+.pass__barcode-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2cqw;
+  margin-top: 0.6cqw;
+}
+
+.pass__barcode {
+  flex: 1;
+  height: 7cqw;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-ink) 0 0.7cqw,
+    transparent 0.7cqw 1.4cqw,
+    var(--color-ink) 1.4cqw 2.3cqw,
+    transparent 2.3cqw 3cqw,
+    var(--color-ink) 3cqw 3.4cqw,
+    transparent 3.4cqw 4.6cqw
   );
 }
 
-.pass__monogram {
-  box-shadow: 0 0 0 3px rgba(215, 255, 56, 0.25);
+.pass__serial {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 2.4cqw;
+  letter-spacing: 0.12em;
+  color: rgba(17, 17, 22, 0.55);
 }
 
-/* The wordmark, stamped into its own band on the card.
-   Treated as an ink impression rather than a pasted logo: a ruled frame,
-   slightly translucent ink that lets the card texture read through, and a
-   fine speckle mask so the edges break up the way a real stamp does. */
+/* ---- portrait ---- */
+
+.pass__portrait-box {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 2cqw;
+  border: 0.55cqw dashed rgba(17, 17, 22, 0.42);
+  border-radius: 2cqw;
+}
+
+.pass__portrait-tag {
+  position: absolute;
+  /* Sits under the box: the stamp presses over the top-right corner. */
+  bottom: -2.4cqw;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5cqw 1.8cqw;
+  border: 0.45cqw solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-paper);
+  font-size: 2.2cqw;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pass__monogram {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 0.55cqw solid var(--color-ink);
+  border-radius: 2cqw;
+  background: linear-gradient(150deg, var(--color-grape), #5a3fd0);
+  color: #fff;
+  font-size: 9cqw;
+  line-height: 1;
+  box-shadow: 0.9cqw 0.9cqw 0 var(--color-ink);
+}
+
+/* ---- Protocol stamp, pressed over the lower-left corner ---- */
+
 .pass__stamp {
-  display: block;
-  width: 82%;
-  max-width: 19rem;
+  position: absolute;
+  right: 3.5cqw;
+  top: 4cqw;
+  z-index: 2;
+  width: 29cqw;
   pointer-events: none;
   color: var(--color-protocol);
-  transform: rotate(-7deg);
+  transform: rotate(-9deg);
 }
 
 .pass__stamp-frame {
@@ -1570,35 +1703,28 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.85rem 1.15rem 0.6rem;
-  border: 2.5px solid currentColor;
-  border-radius: 0.9rem;
-  /* Ink sits slightly transparent so the guilloche shows through it. */
-  opacity: 0.82;
-  /* Speckle mask — breaks the edges so it reads as pressed, not printed. */
+  gap: 1.2cqw;
+  padding: 2cqw 2.4cqw 1.4cqw;
+  border: 0.6cqw solid currentColor;
+  border-radius: 1.6cqw;
+  background: rgba(250, 247, 240, 0.55);
+  /* Ink sits translucent, and the edges break up the way a pressed stamp does. */
+  opacity: 0.88;
   -webkit-mask-image: radial-gradient(
-    circle at 50% 45%,
-    #000 62%,
-    rgba(0, 0, 0, 0.86) 78%,
-    rgba(0, 0, 0, 0.62) 100%
+    circle at 50% 45%, #000 62%, rgba(0, 0, 0, 0.85) 78%, rgba(0, 0, 0, 0.6) 100%
   );
   mask-image: radial-gradient(
-    circle at 50% 45%,
-    #000 62%,
-    rgba(0, 0, 0, 0.86) 78%,
-    rgba(0, 0, 0, 0.62) 100%
+    circle at 50% 45%, #000 62%, rgba(0, 0, 0, 0.85) 78%, rgba(0, 0, 0, 0.6) 100%
   );
 }
 
-/* Inner keyline, the way an official stamp is usually double-ruled. */
 .pass__stamp-frame::before {
   content: "";
   position: absolute;
-  inset: 3.5px;
-  border: 1px solid currentColor;
-  border-radius: 0.62rem;
-  opacity: 0.55;
+  inset: 0.7cqw;
+  border: 0.25cqw solid currentColor;
+  border-radius: 1.1cqw;
+  opacity: 0.5;
 }
 
 .pass__stamp-mark {
@@ -1606,11 +1732,11 @@
 }
 
 .pass__stamp-caption {
-  font-size: 0.5rem;
+  font-size: 1.5cqw;
   font-weight: 700;
-  letter-spacing: 0.34em;
-  text-transform: uppercase;
+  letter-spacing: 0.3em;
   line-height: 1;
+  text-transform: uppercase;
 }
 
 /* --------------------------------------------------------------------------
@@ -1627,7 +1753,7 @@
 }
 
 /* Everything inside fades up just behind the card's own entrance. */
-.pass--issuing > *:not(.pass__stamp):not(.pass__texture) {
+.pass--issuing > *:not(.pass__stamp) {
   animation: pass-fill 0.5s ease-out both;
   animation-delay: 0.4s;
 }
@@ -1672,8 +1798,8 @@
     transform: rotate(-8deg) scale(1.05);
   }
   100% {
-    opacity: 0.95;
-    transform: rotate(-6deg) scale(1);
+    opacity: 1;
+    transform: rotate(-9deg) scale(1);
   }
 }
 
@@ -1681,11 +1807,10 @@
 .pass--issuing::after {
   content: "";
   position: absolute;
-  left: 50%;
-  bottom: 7.5rem;
+  right: 15cqw;
+  top: 12cqw;
   width: 3rem;
   height: 3rem;
-  margin-left: -1.5rem;
   border: 3px solid var(--color-protocol);
   border-radius: 999px;
   pointer-events: none;

@@ -64,28 +64,24 @@ export default function OnboardingFlow({ name, issuedOn }: OnboardingFlowProps) 
   }
 
   return (
-    // Phone reads heading -> card -> button. On a desktop the card moves to
-    // its own column so it gets the full height instead of sharing it.
-    <div className="grid gap-6 lg:grid-cols-2 lg:items-center lg:gap-14">
-      <div className="order-1 text-center lg:order-2 lg:text-left">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="text-center">
         <span className="sticker inline-flex items-center gap-2 bg-limepop px-4 py-1.5 text-xs font-bold uppercase tracking-widest">
           <BadgeCheck className="size-4" />
           Pass issued
         </span>
-        <h1 className="display mt-5 text-[3rem] leading-[0.9] sm:text-6xl lg:text-7xl">
+        <h1 className="display mt-5 text-[3rem] leading-[0.9] sm:text-6xl">
           You&apos;re on the list
         </h1>
-        <p className="mx-auto mt-4 max-w-sm text-sm text-muted-foreground lg:mx-0">
+        <p className="mx-auto mt-4 max-w-sm text-sm text-muted-foreground">
           This is your AfterClass pass. It travels with you to every event you
           register for.
         </p>
       </div>
 
-      <div className="order-2 lg:order-1 lg:row-span-2">
-        <DigitalPass name={name} issuedOn={issuedOn} animate />
-      </div>
+      <DigitalPass name={name} issuedOn={issuedOn} animate />
 
-      <div className="order-3 flex justify-center lg:order-3 lg:justify-start lg:self-start">
+      <div className="flex justify-center">
         <Button size="lg" className="gap-2" onClick={() => setStep("tuned")}>
           Continue
           <ArrowRight className="size-4" />

@@ -19,7 +19,7 @@ export default async function OnboardingPage() {
   });
 
   return (
-    <main className="mx-auto w-full max-w-md px-4 py-8 sm:py-12 lg:max-w-5xl lg:py-10">
+    <main className="mx-auto w-full max-w-md px-4 py-8 sm:max-w-2xl sm:py-12 lg:max-w-3xl">
       <OnboardingFlow name={user.name} issuedOn={issuedOn} />
     </main>
   );
