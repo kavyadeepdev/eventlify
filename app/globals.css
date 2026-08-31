@@ -19,6 +19,8 @@
   --color-flame: #ff5c35;
   --color-aqua: #62e9e1;
   --color-coral: #ff5438;
+  /* Protocol wordmark — the dusty rose from the club's logo. */
+  --color-protocol: #d7a3b0;
   --color-mint: #ccf4dc;
 
   --font-display: var(--font-anton), "Arial Black", "Helvetica Neue", sans-serif;
@@ -703,7 +705,7 @@
 
 .home-hero__orbit--two {
   right: -1.2rem;
-  bottom: 5.5rem;
+  bottom: 7.5rem;
   width: 3.6rem;
   height: 3.6rem;
   border-radius: 50%;
@@ -1457,55 +1459,328 @@
 
 /* --------------------------------------------------------------------------
    Digital pass
+
+   Landscape sketchbook ID card: a coloured frame around paper, a title chip,
+   ruled fields on dotted leaders, a barcode, and a portrait in a dashed box.
+   Sized so the whole card is always on screen — width is bounded by the
+   viewport and by the height left over after the page's own chrome, so
+   whichever runs out first wins.
    -------------------------------------------------------------------------- */
 
 .pass {
-  /* Sits above the halftone page texture without inheriting it. */
+  --pass-reserve: 21rem;
+  --pass-max: 34rem;
+  --pass-ratio: 1.6; /* 8 / 5, a landscape ID card */
+
+  position: relative;
   isolation: isolate;
-}
-
-/* Fine security guilloche behind the card contents. */
-.pass__texture {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.16;
-  background-image:
-    repeating-linear-gradient(
-      115deg,
-      var(--color-grape) 0 1px,
-      transparent 1px 7px
-    ),
-    repeating-linear-gradient(
-      -115deg,
-      var(--color-aqua) 0 1px,
-      transparent 1px 9px
-    );
-}
-
-.pass__portrait {
-  box-shadow: 0 0 0 3px rgba(215, 255, 56, 0.25);
-}
-
-/* The crest, stamped over the lower-right corner. */
-.pass__stamp {
-  position: absolute;
-  right: -0.9rem;
-  bottom: -0.9rem;
-  display: block;
-  width: 8.5rem;
-  height: 8.5rem;
-  pointer-events: none;
-  opacity: 0.9;
-  transform: rotate(-14deg);
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+  aspect-ratio: 8 / 5;
+  width: min(
+    100%,
+    var(--pass-max),
+    calc((100svh - var(--pass-reserve)) * var(--pass-ratio))
+  );
+  margin-inline: auto;
+  padding: clamp(0.5rem, 1.6cqw, 0.85rem);
+  container-type: inline-size;
+  border-radius: clamp(0.9rem, 3cqw, 1.6rem);
+  background: linear-gradient(150deg, var(--color-grape), #6b4be0 60%, #593fc4);
+  box-shadow:
+    0 18px 40px -18px rgba(17, 17, 22, 0.55),
+    6px 6px 0 var(--color-ink);
 }
 
 @media (min-width: 640px) {
-  .pass__stamp {
-    width: 10rem;
-    height: 10rem;
+  .pass {
+    --pass-reserve: 19rem;
+    --pass-max: 46rem;
   }
+}
+
+@media (min-width: 1024px) {
+  .pass {
+    --pass-reserve: 21rem;
+    --pass-max: 58rem;
+  }
+}
+
+/* The paper the card is drawn on. */
+.pass__paper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5cqw;
+  width: 100%;
+  height: 100%;
+  padding: 3cqw 3.4cqw;
+  overflow: hidden;
+  border-radius: clamp(0.5rem, 2cqw, 1rem);
+  /* Graph paper: a fine grid with a heavier rule every fifth square, warmed
+     by a wash from opposite corners so it never reads as flat white. */
+  background-image:
+    radial-gradient(75% 60% at 88% 6%, rgba(215, 163, 176, 0.28), transparent 62%),
+    radial-gradient(70% 65% at 4% 96%, rgba(124, 77, 245, 0.18), transparent 66%),
+    linear-gradient(to right, rgba(124, 77, 245, 0.16) 0 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(124, 77, 245, 0.16) 0 1px, transparent 1px),
+    linear-gradient(to right, rgba(124, 77, 245, 0.07) 0 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(124, 77, 245, 0.07) 0 1px, transparent 1px),
+    linear-gradient(168deg, #fffdf8 0%, var(--color-paper) 52%, #f2eee4 100%);
+  background-size:
+    100% 100%,
+    100% 100%,
+    12cqw 12cqw,
+    12cqw 12cqw,
+    2.4cqw 2.4cqw,
+    2.4cqw 2.4cqw,
+    100% 100%;
+  color: var(--color-ink);
+}
+
+/* Paper grain, so the surface has some tooth to it. */
+.pass__paper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23g)' opacity='0.28'/%3E%3C/svg%3E");
+}
+
+/* ---- title row ---- */
+
+.pass__top {
+  display: flex;
+  align-items: center;
+  gap: 2.4cqw;
+}
+
+.pass__index {
+  display: grid;
+  place-items: center;
+  min-width: 7cqw;
+  padding: 0.4cqw 1.4cqw;
+  border: 0.55cqw solid var(--color-ink);
+  border-radius: 1.2cqw;
+  font-family: var(--font-display);
+  font-size: 4.4cqw;
+  line-height: 1.15;
+}
+
+.pass__chip {
+  padding: 0.7cqw 2.6cqw;
+  border: 0.5cqw solid var(--color-ink);
+  border-radius: 999px;
+  font-size: 2.7cqw;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.pass__dots {
+  display: flex;
+  gap: 1.4cqw;
+}
+
+.pass__dots i {
+  width: 4.2cqw;
+  height: 4.2cqw;
+  border: 0.5cqw solid var(--color-ink);
+  border-radius: 999px;
+}
+
+.pass__dots i:nth-child(1) { background: var(--color-limepop); }
+.pass__dots i:nth-child(2) { background: var(--color-protocol); }
+.pass__dots i:nth-child(3) { background: var(--color-aqua); }
+
+/* ---- body ---- */
+
+.pass__body {
+  display: grid;
+  grid-template-columns: 1fr 26cqw;
+  gap: 3cqw;
+  flex: 1;
+  min-height: 0;
+}
+
+.pass__fields {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3.2cqw;
+  min-width: 0;
+}
+
+.pass__field {
+  display: flex;
+  align-items: baseline;
+  gap: 1.4cqw;
+  min-width: 0;
+  /* The dotted rule the value sits on. */
+  border-bottom: 0.4cqw dashed rgba(17, 17, 22, 0.32);
+  padding-bottom: 1cqw;
+}
+
+.pass__field-label {
+  flex-shrink: 0;
+  font-size: 2.7cqw;
+  font-weight: 600;
+  color: rgba(17, 17, 22, 0.55);
+}
+
+.pass__field-value {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 4.2cqw;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ---- barcode ---- */
+
+.pass__barcode-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2cqw;
+  margin-top: 0.6cqw;
+}
+
+.pass__barcode {
+  flex: 1;
+  height: 7cqw;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-ink) 0 0.7cqw,
+    transparent 0.7cqw 1.4cqw,
+    var(--color-ink) 1.4cqw 2.3cqw,
+    transparent 2.3cqw 3cqw,
+    var(--color-ink) 3cqw 3.4cqw,
+    transparent 3.4cqw 4.6cqw
+  );
+}
+
+.pass__serial {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 2.4cqw;
+  letter-spacing: 0.12em;
+  color: rgba(17, 17, 22, 0.55);
+}
+
+/* ---- portrait ---- */
+
+.pass__portrait-box {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 2cqw;
+  border: 0.55cqw dashed rgba(17, 17, 22, 0.42);
+  border-radius: 2cqw;
+}
+
+.pass__portrait-tag {
+  position: absolute;
+  /* Sits under the box: the stamp presses over the top-right corner. */
+  bottom: -2.4cqw;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5cqw 1.8cqw;
+  border: 0.45cqw solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-paper);
+  font-size: 2.2cqw;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pass__portrait-img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 0.55cqw solid var(--color-ink);
+  border-radius: 2cqw;
+  box-shadow: 0.9cqw 0.9cqw 0 var(--color-ink);
+}
+
+.pass__monogram {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 0.55cqw solid var(--color-ink);
+  border-radius: 2cqw;
+  background: linear-gradient(150deg, var(--color-grape), #5a3fd0);
+  color: #fff;
+  font-size: 9cqw;
+  line-height: 1;
+  box-shadow: 0.9cqw 0.9cqw 0 var(--color-ink);
+}
+
+/* ---- Protocol seal, pressed over the top-right corner ---- */
+
+.pass__stamp {
+  position: absolute;
+  right: 2.5cqw;
+  top: 3cqw;
+  z-index: 2;
+  display: block;
+  width: 27cqw;
+  aspect-ratio: 1;
+  pointer-events: none;
+  color: var(--color-protocol);
+  transform: rotate(-11deg);
+  /* Ink sits translucent so the graph paper reads through it, and the edges
+     break up the way a pressed stamp does. */
+  opacity: 0.9;
+  -webkit-mask-image: radial-gradient(
+    circle at 48% 46%, #000 58%, rgba(0, 0, 0, 0.82) 76%, rgba(0, 0, 0, 0.45) 100%
+  );
+  mask-image: radial-gradient(
+    circle at 48% 46%, #000 58%, rgba(0, 0, 0, 0.82) 76%, rgba(0, 0, 0, 0.45) 100%
+  );
+}
+
+.seal {
+  display: block;
+}
+
+/* The inner wrapper owns the positioning context, so whatever class the
+   caller puts on `.seal` still decides where the seal sits. */
+.seal__inner {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.seal__ring {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.seal__text {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.seal__star {
+  font-size: 15px;
+}
+
+/* The wordmark sits across the middle of the seal. */
+.seal__mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 62%;
+  transform: translate(-50%, -50%);
 }
 
 /* --------------------------------------------------------------------------
@@ -1522,7 +1797,7 @@
 }
 
 /* Everything inside fades up just behind the card's own entrance. */
-.pass--issuing > *:not(.pass__stamp):not(.pass__texture) {
+.pass--issuing > *:not(.pass__stamp) {
   animation: pass-fill 0.5s ease-out both;
   animation-delay: 0.4s;
 }
@@ -1557,18 +1832,18 @@
 @keyframes stamp-press {
   0% {
     opacity: 0;
-    transform: rotate(-32deg) scale(2.6);
+    transform: rotate(-24deg) scale(2.5);
   }
   55% {
     opacity: 1;
-    transform: rotate(-11deg) scale(0.9);
+    transform: rotate(-3deg) scale(0.93);
   }
   72% {
-    transform: rotate(-15deg) scale(1.08);
+    transform: rotate(-8deg) scale(1.05);
   }
   100% {
-    opacity: 0.9;
-    transform: rotate(-14deg) scale(1);
+    opacity: 1;
+    transform: rotate(-9deg) scale(1);
   }
 }
 
@@ -1576,11 +1851,11 @@
 .pass--issuing::after {
   content: "";
   position: absolute;
-  right: 2.4rem;
-  bottom: 2.4rem;
+  right: 15cqw;
+  top: 12cqw;
   width: 3rem;
   height: 3rem;
-  border: 3px solid var(--color-limepop);
+  border: 3px solid var(--color-protocol);
   border-radius: 999px;
   pointer-events: none;
   opacity: 0;
