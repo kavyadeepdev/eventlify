@@ -1,9 +1,11 @@
-import ProtocolMark from "@/components/brand/protocol-mark";
+import ProtocolSeal from "@/components/brand/protocol-seal";
 import { initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export interface DigitalPassProps {
   name: string;
+  /** Profile picture; falls back to initials when absent. */
+  image?: string | null;
   /** Left blank until club membership is wired up. */
   clubs?: string[];
   issuedOn?: string;
@@ -35,6 +37,7 @@ function Field({ label, value }: { label: string; value: string }) {
  */
 export default function DigitalPass({
   name,
+  image = null,
   clubs = [],
   issuedOn,
   animate = false,
@@ -82,18 +85,20 @@ export default function DigitalPass({
           {/* Portrait, pinned in a dashed box */}
           <div className="pass__portrait-box">
             <span className="pass__portrait-tag">afterclass</span>
-            <span className="pass__monogram display">{initials(name)}</span>
+            {image ? (
+              // Uploaded pictures are inline data URLs, which the image
+              // optimiser can't fetch — render them directly.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={image} alt="" className="pass__portrait-img" />
+            ) : (
+              <span className="pass__monogram display">{initials(name)}</span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Protocol stamp, pressed over the corner */}
-      <span aria-hidden="true" className="pass__stamp">
-        <span className="pass__stamp-frame">
-          <ProtocolMark className="pass__stamp-mark" />
-          <span className="pass__stamp-caption">Verified member</span>
-        </span>
-      </span>
+      {/* Protocol seal, pressed over the corner */}
+      <ProtocolSeal className="pass__stamp" />
     </article>
   );
 }

@@ -5,7 +5,7 @@ import OnboardingFlow from "@/components/onboarding/onboarding-flow";
 
 export const metadata: Metadata = {
   title: "Your pass",
-  description: "Your AfterClass pass.",
+  description: "Pick a picture and get your AfterClass pass.",
 };
 
 export default async function OnboardingPage() {
@@ -20,7 +20,11 @@ export default async function OnboardingPage() {
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-8 sm:max-w-2xl sm:py-12 lg:max-w-3xl">
-      <OnboardingFlow name={user.name} issuedOn={issuedOn} />
+      <OnboardingFlow
+        name={user.name}
+        issuedOn={issuedOn}
+        defaultImage={user.image}
+      />
     </main>
   );
 }

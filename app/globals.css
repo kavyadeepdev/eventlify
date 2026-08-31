@@ -1515,10 +1515,36 @@
   padding: 3cqw 3.4cqw;
   overflow: hidden;
   border-radius: clamp(0.5rem, 2cqw, 1rem);
-  background:
-    radial-gradient(120% 90% at 88% 8%, rgba(215, 163, 176, 0.16), transparent 60%),
-    var(--color-paper);
+  /* Graph paper: a fine grid with a heavier rule every fifth square, warmed
+     by a wash from opposite corners so it never reads as flat white. */
+  background-image:
+    radial-gradient(75% 60% at 88% 6%, rgba(215, 163, 176, 0.28), transparent 62%),
+    radial-gradient(70% 65% at 4% 96%, rgba(124, 77, 245, 0.18), transparent 66%),
+    linear-gradient(to right, rgba(124, 77, 245, 0.16) 0 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(124, 77, 245, 0.16) 0 1px, transparent 1px),
+    linear-gradient(to right, rgba(124, 77, 245, 0.07) 0 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(124, 77, 245, 0.07) 0 1px, transparent 1px),
+    linear-gradient(168deg, #fffdf8 0%, var(--color-paper) 52%, #f2eee4 100%);
+  background-size:
+    100% 100%,
+    100% 100%,
+    12cqw 12cqw,
+    12cqw 12cqw,
+    2.4cqw 2.4cqw,
+    2.4cqw 2.4cqw,
+    100% 100%;
   color: var(--color-ink);
+}
+
+/* Paper grain, so the surface has some tooth to it. */
+.pass__paper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23g)' opacity='0.28'/%3E%3C/svg%3E");
 }
 
 /* ---- title row ---- */
@@ -1671,6 +1697,15 @@
   white-space: nowrap;
 }
 
+.pass__portrait-img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 0.55cqw solid var(--color-ink);
+  border-radius: 2cqw;
+  box-shadow: 0.9cqw 0.9cqw 0 var(--color-ink);
+}
+
 .pass__monogram {
   display: grid;
   place-items: center;
@@ -1685,58 +1720,67 @@
   box-shadow: 0.9cqw 0.9cqw 0 var(--color-ink);
 }
 
-/* ---- Protocol stamp, pressed over the lower-left corner ---- */
+/* ---- Protocol seal, pressed over the top-right corner ---- */
 
 .pass__stamp {
   position: absolute;
-  right: 3.5cqw;
-  top: 4cqw;
+  right: 2.5cqw;
+  top: 3cqw;
   z-index: 2;
-  width: 29cqw;
+  display: block;
+  width: 27cqw;
+  aspect-ratio: 1;
   pointer-events: none;
   color: var(--color-protocol);
-  transform: rotate(-9deg);
-}
-
-.pass__stamp-frame {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.2cqw;
-  padding: 2cqw 2.4cqw 1.4cqw;
-  border: 0.6cqw solid currentColor;
-  border-radius: 1.6cqw;
-  background: rgba(250, 247, 240, 0.55);
-  /* Ink sits translucent, and the edges break up the way a pressed stamp does. */
-  opacity: 0.88;
+  transform: rotate(-11deg);
+  /* Ink sits translucent so the graph paper reads through it, and the edges
+     break up the way a pressed stamp does. */
+  opacity: 0.9;
   -webkit-mask-image: radial-gradient(
-    circle at 50% 45%, #000 62%, rgba(0, 0, 0, 0.85) 78%, rgba(0, 0, 0, 0.6) 100%
+    circle at 48% 46%, #000 58%, rgba(0, 0, 0, 0.82) 76%, rgba(0, 0, 0, 0.45) 100%
   );
   mask-image: radial-gradient(
-    circle at 50% 45%, #000 62%, rgba(0, 0, 0, 0.85) 78%, rgba(0, 0, 0, 0.6) 100%
+    circle at 48% 46%, #000 58%, rgba(0, 0, 0, 0.82) 76%, rgba(0, 0, 0, 0.45) 100%
   );
 }
 
-.pass__stamp-frame::before {
-  content: "";
-  position: absolute;
-  inset: 0.7cqw;
-  border: 0.25cqw solid currentColor;
-  border-radius: 1.1cqw;
-  opacity: 0.5;
+.seal {
+  display: block;
 }
 
-.pass__stamp-mark {
+/* The inner wrapper owns the positioning context, so whatever class the
+   caller puts on `.seal` still decides where the seal sits. */
+.seal__inner {
+  position: relative;
+  display: block;
   width: 100%;
+  height: 100%;
 }
 
-.pass__stamp-caption {
-  font-size: 1.5cqw;
+.seal__ring {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.seal__text {
+  font-family: var(--font-sans);
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.3em;
-  line-height: 1;
-  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+
+.seal__star {
+  font-size: 15px;
+}
+
+/* The wordmark sits across the middle of the seal. */
+.seal__mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 62%;
+  transform: translate(-50%, -50%);
 }
 
 /* --------------------------------------------------------------------------

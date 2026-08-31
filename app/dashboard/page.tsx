@@ -151,6 +151,7 @@ export default async function DashboardPage() {
           <aside className="space-y-6 lg:col-span-4">
             <DigitalPass
               name={profile?.name ?? user.name}
+              image={profile?.image ?? user.image}
               issuedOn={
                 profile?.createdAt
                   ? new Date(profile.createdAt).toLocaleDateString("en-IN", {

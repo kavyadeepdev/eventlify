@@ -340,6 +340,41 @@ const usnSchema = z
     "That doesn't look like a USN (example: 1BM24CS001)"
   );
 
+/**
+ * Saves the profile picture chosen during onboarding. Separate from
+ * `updateProfileAction` because onboarding collects only a picture — there is
+ * no USN step, and reusing the profile schema would demand one.
+ */
+export async function saveProfilePictureAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const user = await getSessionUser();
+  if (!user) return failure("Sign in to set your picture.");
+
+  const parsed = z
+    .string()
+    .max(400_000, "That picture is too large.")
+    .safeParse(String(formData.get("image") ?? ""));
+
+  if (!parsed.success) {
+    return failure(parsed.error.issues[0]?.message ?? "Check the picture.");
+  }
+
+  const ok = await updateUserProfile(user.id, {
+    name: user.name,
+    usn: user.usn,
+    image: parsed.data || null,
+  });
+
+  if (!ok) return failure("Could not save your picture.");
+
+  // Only the dashboard is revalidated. Revalidating /onboarding would refresh
+  // the page the student is standing on mid-flow.
+  revalidatePath("/dashboard");
+  return success("Picture saved.");
+}
+
 const profileSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   usn: usnSchema,

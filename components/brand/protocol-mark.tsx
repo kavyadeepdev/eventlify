@@ -18,7 +18,7 @@ export default function ProtocolMark({ className }: { className?: string }) {
 
   return (
     <svg
-      viewBox="0 0 344 122"
+      viewBox="0 0 328 122"
       className={cn("block", className)}
       role="img"
       aria-label="Protocol"
@@ -41,19 +41,19 @@ export default function ProtocolMark({ className }: { className?: string }) {
           <path d="M60 94L69 101L60 108" />
         </g>
 
-        {/* r — stem and lifted arm */}
-        <path d="M92 58V84" />
-        <path d="M92 69L106 57" />
+        {/* r — stem and lifted arm, kerned in close to the p */}
+        <path d="M76 58V84" />
+        <path d="M76 69L90 57" />
 
         {/* t — stem and crossbar; the round cap forms the top dot */}
-        <path d="M178 40V84" />
-        <path d="M165 57H191" />
+        <path d="M162 40V84" />
+        <path d="M149 57H175" />
 
         {/* c — open chevron */}
-        <path d="M258 57L245 69L258 81" />
+        <path d="M242 57L229 69L242 81" />
 
         {/* l — plain stem */}
-        <path d="M322 40V84" />
+        <path d="M306 40V84" />
       </g>
 
       {/* The three counters, stroked lightly so their corners round off the
@@ -65,9 +65,9 @@ export default function ProtocolMark({ className }: { className?: string }) {
         strokeWidth={5}
         strokeLinejoin="round"
       >
-        <path d={diamond(136)} />
-        <path d={diamond(220)} />
-        <path d={diamond(288)} />
+        <path d={diamond(120)} />
+        <path d={diamond(204)} />
+        <path d={diamond(272)} />
       </g>
     </svg>
   );
